@@ -1,0 +1,164 @@
+// KIProtect Go-Helpers - Golang Utility Functions
+// Copyright (C) 2020  KIProtect GmbH (HRB 208395B) - Germany
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the 3-Clause BSD License.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// license for more details.
+//
+// You should have received a copy of the 3-Clause BSD License
+// along with this program.  If not, see <https://opensource.org/licenses/BSD-3-Clause>.
+
+package errors
+
+import (
+	"encoding/json"
+	"reflect"
+)
+
+type StructuredError struct {
+	Message string      `json:"message"`
+	Code    string      `json:"code"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+type ErrorScope int
+
+const (
+	ExternalError ErrorScope = 1
+	InternalError ErrorScope = 2
+)
+
+type StructuredErrorWithTraceback struct {
+	StructuredError
+	Traceback []StructuredError `json:"traceback"`
+}
+
+type ChainableError interface {
+	Error() string
+	Message() string
+	Scope() ErrorScope
+	Data() interface{}
+	Code() string
+	StructuredError(scope ErrorScope) StructuredError
+	StructuredErrorWithTraceback(scope ErrorScope) StructuredErrorWithTraceback
+	Parent() error
+}
+
+type BaseChainableError struct {
+	data    interface{}
+	code    string
+	scope   ErrorScope
+	message string
+	parent  error
+}
+
+func MakeExternalError(message, code string, data interface{}, parent error) *BaseChainableError {
+	return MakeError(ExternalError, message, code, data, parent)
+}
+
+func MakeInternalError(message, code string, data interface{}, parent error) *BaseChainableError {
+	return MakeError(InternalError, message, code, data, parent)
+}
+
+func MakeError(scope ErrorScope, message, code string, data interface{}, parent error) *BaseChainableError {
+	return &BaseChainableError{
+		message: message,
+		code:    code,
+		scope:   scope,
+		data:    data,
+		parent:  parent,
+	}
+}
+
+func (c *BaseChainableError) Scope() ErrorScope {
+	return c.scope
+}
+
+func (c *BaseChainableError) Message() string {
+	return c.message
+}
+
+func (c *BaseChainableError) Data() interface{} {
+	return c.data
+}
+
+func (c *BaseChainableError) Code() string {
+	return c.code
+}
+
+func (c *BaseChainableError) Error() string {
+	message := c.message
+	parent := c.parent
+	for {
+		if parent == nil {
+			break
+		}
+		chainableParent, ok := parent.(ChainableError)
+		if ok {
+			message += ": " + chainableParent.Message()
+			parent = chainableParent.Parent()
+		} else {
+			message += ": " + parent.Error()
+			parent = nil
+		}
+	}
+	return message
+}
+
+func (c *BaseChainableError) Parent() error {
+	return c.parent
+}
+
+func (c *BaseChainableError) StructuredError(scope ErrorScope) StructuredError {
+	if c.scope > scope {
+		return StructuredError{
+			Message: "undisclosed error",
+			Code:    c.code,
+		}
+	}
+	return StructuredError{
+		Message: c.message,
+		Code:    c.code,
+		Data:    c.data,
+	}
+}
+
+func (c *BaseChainableError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.StructuredErrorWithTraceback(ExternalError))
+}
+
+func (c *BaseChainableError) StructuredErrorWithTraceback(scope ErrorScope) StructuredErrorWithTraceback {
+	traceback := make([]StructuredError, 0)
+	err := c.Parent()
+	for {
+		if err == nil {
+			break
+		}
+		cErr, ok := err.(ChainableError)
+		if !ok {
+			// if we show internal errors we include the error message
+			// as well as its type to improve debugability.
+			if scope >= InternalError {
+				t := reflect.TypeOf(err)
+				traceback = append(traceback, StructuredError{
+					Message: err.Error(),
+					Code:    "GO-ERROR",
+					Data: map[string]interface{}{
+						"type": t.Name(),
+					},
+				})
+			}
+			break
+		}
+		traceback = append(traceback, cErr.StructuredError(scope))
+		err = cErr.Parent()
+	}
+	return StructuredErrorWithTraceback{
+		StructuredError: c.StructuredError(scope),
+		Traceback:       traceback,
+	}
+}
