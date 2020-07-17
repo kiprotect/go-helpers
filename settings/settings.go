@@ -26,6 +26,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -498,9 +499,79 @@ func InsertVars(data interface{}, values map[string]interface{}) error {
 	return nil
 }
 
-func LoadYaml(filePath string) (map[string]interface{}, error) {
+func getPath(basePath, filePath string) (string, error) {
+	if strings.HasPrefix(filePath, "/") {
+		return "", fmt.Errorf("absolute paths are not allowed for security reasons")
+	}
+	dir := filepath.Dir(basePath)
+	return filepath.Join(dir, filePath), nil
+}
 
-	fileContent, err := ioutil.ReadFile(filePath)
+type Reader func(string) ([]byte, error)
+
+func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}, error) {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		newValues := make(map[string]interface{})
+		for key, value := range v {
+			if key == "$include" {
+				includes := make([]string, 0, 1)
+				if strValue, ok := value.(string); ok {
+					includes = append(includes, strValue)
+				} else if listValue, ok := value.([]interface{}); ok {
+					for _, value := range listValue {
+						if strValue, ok := value.(string); ok {
+							includes = append(includes, strValue)
+						} else {
+							return nil, fmt.Errorf("expected a string")
+						}
+					}
+				} else {
+					return nil, fmt.Errorf("invalid $include format (neither a string nor a list of strings)")
+				}
+				for _, include := range includes {
+					if newPath, err := getPath(filePath, include); err != nil {
+						return nil, err
+					} else {
+						if newValue, err := loadYaml(newPath, reader); err != nil {
+							return nil, err
+						} else {
+							// we merge the values
+							Merge(newValues, newValue)
+						}
+					}
+				}
+			} else {
+				if result, err := loadIncludes(value, filePath, reader); err != nil {
+					return nil, err
+				} else {
+					newValues[key] = result
+				}
+			}
+		}
+		return newValues, nil
+	case []interface{}:
+		newValues := make([]interface{}, 0, len(v))
+		for _, value := range v {
+			if result, err := loadIncludes(value, filePath, reader); err != nil {
+				return nil, err
+			} else {
+				newValues = append(newValues, result)
+			}
+		}
+		return newValues, nil
+	}
+	return data, nil
+
+}
+
+func LoadYaml(filePath string) (map[string]interface{}, error) {
+	return loadYaml(filePath, ioutil.ReadFile)
+}
+
+func loadYaml(filePath string, reader Reader) (map[string]interface{}, error) {
+
+	fileContent, err := reader(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -514,7 +585,11 @@ func LoadYaml(filePath string) (map[string]interface{}, error) {
 	if !ok {
 		return nil, fmt.Errorf("Non-string keys encountered in file '%s'", filePath)
 	}
-	return deepStringMap, nil
+	if mapWithIncludes, err := loadIncludes(deepStringMap, filePath, reader); err != nil {
+		return nil, err
+	} else {
+		return mapWithIncludes.(map[string]interface{}), nil
+	}
 }
 
 func MakeSettings(settingsPaths []string) (*Settings, error) {

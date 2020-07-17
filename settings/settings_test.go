@@ -16,9 +16,53 @@ package settings
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"testing"
 )
+
+func TestIncludes(t *testing.T) {
+	includes := map[string]string{
+		"/test/another-include.yml": "foo: bar",
+		"/test/and-another-one.yml": "bar: baz",
+		"/test/list-include.yml":    "zoop: zap",
+		"/test/map-include.yml":     "bam: bom",
+		"/test/bar.yml": `
+$include:
+  - another-include.yml
+  - and-another-one.yml
+deep:
+  - list
+  - $include: list-include.yml
+  - map:
+      $include: map-include.yml`,
+	}
+	reader := func(path string) ([]byte, error) {
+		include, ok := includes[path]
+		t.Log(path)
+		if !ok {
+			return nil, fmt.Errorf("not found")
+		}
+		return []byte(include), nil
+	}
+
+	settings, err := loadYaml("/test/bar.yml", reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := settings["foo"].(string); !ok || v != "bar" {
+		t.Error("'foo' value missing")
+	}
+	if v, ok := settings["bar"].(string); !ok || v != "baz" {
+		t.Error("'foo' value missing")
+	}
+	if v, ok := settings["deep"].([]interface{})[1].(map[string]interface{})["zoop"]; !ok || v != "zap" {
+		t.Error("'zoop' value missing")
+	}
+	if v, ok := settings["deep"].([]interface{})[2].(map[string]interface{})["map"].(map[string]interface{})["bam"].(string); !ok || v != "bom" {
+		t.Error("'bom' value missing")
+	}
+}
 
 func TestEnvVariable(t *testing.T) {
 	varsStruct := map[string]interface{}{
