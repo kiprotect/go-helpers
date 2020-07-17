@@ -684,11 +684,11 @@ func loadYaml(filePath string, reader Reader) (interface{}, error) {
 	if yamlerror != nil {
 		return nil, yamlerror
 	}
-	deepStringMap, ok := maps.RecursiveToStringMap(settings)
+	deepStringMap, ok := maps.EnsureStringKeys(settings)
 	if !ok {
 		return nil, fmt.Errorf("Non-string keys encountered in file '%s'", filePath)
 	}
-	if withIncludes, err := loadIncludes(deepStringMap, filePath, reader); err != nil {
+	if withIncludes, err := loadIncludes(deepStringMap.(map[string]interface{}), filePath, reader); err != nil {
 		return nil, err
 	} else if mapWithIncludes, ok := withIncludes.(map[string]interface{}); !ok {
 		return nil, fmt.Errorf("not a map")

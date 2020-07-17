@@ -218,13 +218,13 @@ func (self *MigrationManager) LoadConfig(ConfigPath string) error {
 		return fmt.Errorf("unmarshal %v: %v", filePath, yamlerror)
 	}
 
-	deepStringConfig, ok := maps.RecursiveToStringMap(config)
+	deepStringConfig, ok := maps.EnsureStringKeys(config)
 
 	if !ok {
 		return fmt.Errorf("Non-string keys encountered in file '%s'", filePath)
 	}
 
-	self.Config = deepStringConfig
+	self.Config = deepStringConfig.(map[string]interface{})
 
 	return nil
 }

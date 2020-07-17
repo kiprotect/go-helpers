@@ -14,20 +14,12 @@
 
 package maps
 
-func RecursiveToStringMap(value interface{}) (map[string]interface{}, bool) {
-	stringMap, ok := recursiveToStringMap(value, false)
-	if ok {
-		return stringMap.(map[string]interface{}), true
-	}
-	return nil, false
-}
-
-func recursiveToStringMap(value interface{}, innerCall bool) (interface{}, bool) {
+func EnsureStringKeys(value interface{}) (interface{}, bool) {
 	valueStrMap, ok := value.(map[string]interface{})
 	if ok {
 		newValueStrMap := make(map[string]interface{})
 		for key, value := range valueStrMap {
-			newValue, ok := recursiveToStringMap(value, true)
+			newValue, ok := EnsureStringKeys(value)
 			if !ok {
 				return nil, false
 			}
@@ -45,7 +37,7 @@ func recursiveToStringMap(value interface{}, innerCall bool) (interface{}, bool)
 			if !ok {
 				return nil, false
 			}
-			newValue, ok := recursiveToStringMap(value, true)
+			newValue, ok := EnsureStringKeys(value)
 			if !ok {
 				return nil, false
 			}
@@ -53,16 +45,12 @@ func recursiveToStringMap(value interface{}, innerCall bool) (interface{}, bool)
 		}
 		return valueStrMap, true
 	}
-	// if this isn't an inner call this is not a string map
-	if !innerCall {
-		return nil, false
-	}
 	valueList, ok := value.([]interface{})
 	if ok {
 		// this is a list, we convert each of its elements
 		newValueList := make([]interface{}, len(valueList))
 		for i, value := range valueList {
-			if newValue, ok := recursiveToStringMap(value, true); !ok {
+			if newValue, ok := EnsureStringKeys(value); !ok {
 				return nil, false
 			} else {
 				newValueList[i] = newValue

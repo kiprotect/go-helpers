@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-func TestRecursiveStringMap(t *testing.T) {
+func TestEnsureStringKeys(t *testing.T) {
 
 	invalidStruct := map[interface{}]interface{}{
 		"test": map[interface{}]interface{}{
@@ -45,13 +45,17 @@ func TestRecursiveStringMap(t *testing.T) {
 		},
 	}
 
-	if _, ok := RecursiveToStringMap(invalidStruct); ok {
+	if _, ok := EnsureStringKeys(invalidStruct); ok {
 		t.Error("should not work")
 	}
 
-	if stringMap, ok := RecursiveToStringMap(validStruct); !ok {
+	if stringObj, ok := EnsureStringKeys(validStruct); !ok {
 		t.Error("should work")
 	} else {
+		stringMap, ok := stringObj.(map[string]interface{})
+		if !ok {
+			t.Fatal("not a map")
+		}
 		if _, ok := stringMap["test"].(map[string]interface{}); !ok {
 			t.Error("should be a string map")
 		}
