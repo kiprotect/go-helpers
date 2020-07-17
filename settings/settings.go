@@ -636,14 +636,18 @@ func getRef(settings map[string]interface{}, key string) (interface{}, error) {
 	return currentValue, nil
 }
 
-func parseRefs(data interface{}, settings map[string]interface{}) (interface{}, error) {
+func parseRefs(data interface{}, settings interface{}) (interface{}, error) {
+	settingsMap, ok := settings.(map[string]interface{})
+	if !ok {
+		return data, nil
+	}
 	switch v := data.(type) {
 	case map[string]interface{}:
 		if value, ok := v["$ref"]; ok && len(v) == 1 {
 			if strValue, ok := value.(string); !ok {
 				return nil, fmt.Errorf("expected a string value")
 			} else {
-				if refValue, err := getRef(settings, strValue); err != nil {
+				if refValue, err := getRef(settingsMap, strValue); err != nil {
 					return nil, err
 				} else {
 					return refValue, nil
@@ -684,15 +688,13 @@ func loadYaml(filePath string, reader Reader) (interface{}, error) {
 	if yamlerror != nil {
 		return nil, yamlerror
 	}
-	deepStringMap, ok := maps.EnsureStringKeys(settings)
+	deepStringObj, ok := maps.EnsureStringKeys(settings)
 	if !ok {
 		return nil, fmt.Errorf("Non-string keys encountered in file '%s'", filePath)
 	}
-	if withIncludes, err := loadIncludes(deepStringMap.(map[string]interface{}), filePath, reader); err != nil {
+	if withIncludes, err := loadIncludes(deepStringObj, filePath, reader); err != nil {
 		return nil, err
-	} else if mapWithIncludes, ok := withIncludes.(map[string]interface{}); !ok {
-		return nil, fmt.Errorf("not a map")
-	} else if withRefs, err := parseRefs(mapWithIncludes, mapWithIncludes); err != nil {
+	} else if withRefs, err := parseRefs(withIncludes, withIncludes); err != nil {
 		return nil, err
 	} else {
 		return withRefs, nil
