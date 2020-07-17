@@ -679,7 +679,7 @@ func loadYaml(filePath string, reader Reader) (interface{}, error) {
 		return nil, err
 	}
 
-	var settings map[interface{}]interface{}
+	var settings interface{}
 	yamlerror := yaml.Unmarshal(fileContent, &settings)
 	if yamlerror != nil {
 		return nil, yamlerror
