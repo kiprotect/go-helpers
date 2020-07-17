@@ -80,16 +80,20 @@ deep:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v, ok := settings["foo"].(string); !ok || v != "bar" {
+	mapSettings, ok := settings.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected a settings map")
+	}
+	if v, ok := mapSettings["foo"].(string); !ok || v != "bar" {
 		t.Error("'foo' value missing")
 	}
-	if v, ok := settings["bar"].(string); !ok || v != "baz" {
+	if v, ok := mapSettings["bar"].(string); !ok || v != "baz" {
 		t.Error("'foo' value missing")
 	}
-	if v, ok := settings["deep"].([]interface{})[1].(map[string]interface{})["zoop"]; !ok || v != "zap" {
+	if v, ok := mapSettings["deep"].([]interface{})[1].(map[string]interface{})["zoop"]; !ok || v != "zap" {
 		t.Error("'zoop' value missing")
 	}
-	if v, ok := settings["deep"].([]interface{})[2].(map[string]interface{})["map"].(map[string]interface{})["bam"].(string); !ok || v != "bom" {
+	if v, ok := mapSettings["deep"].([]interface{})[2].(map[string]interface{})["map"].(map[string]interface{})["bam"].(string); !ok || v != "bom" {
 		t.Error("'bom' value missing")
 	}
 }

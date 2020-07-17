@@ -242,7 +242,11 @@ func (self *Settings) Load(settingsPath string) error {
 		} else if err != nil {
 			return fmt.Errorf("load yaml %v: %v", settingsFile, err)
 		}
-		Merge(self.Values, settings)
+		if mapSettings, ok := settings.(map[string]interface{}); !ok {
+			return fmt.Errorf("expected a map")
+		} else {
+			Merge(self.Values, mapSettings)
+		}
 	}
 	if values, err := ParseVars(self.Values); err != nil {
 		return err
@@ -535,12 +539,21 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 					} else {
 						if newValue, err := loadYaml(newPath, reader); err != nil {
 							return nil, err
-						} else {
+						} else if newMapValue, ok := newValue.(map[string]interface{}); !ok {
+							// if this is only a single include statement we
+							// simply return the value of it
+							if len(v) == 1 {
+								return newValue, nil
+							}
+							return nil, fmt.Errorf("expected a map")
 							// we merge the values
-							Merge(newValues, newValue)
+						} else {
+							Merge(newValues, newMapValue)
 						}
 					}
 				}
+				// we remove the include key from the original map
+				delete(newValues, "$include")
 			} else {
 				if result, err := loadIncludes(value, filePath, reader); err != nil {
 					return nil, err
@@ -556,7 +569,15 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 			if result, err := loadIncludes(value, filePath, reader); err != nil {
 				return nil, err
 			} else {
-				newValues = append(newValues, result)
+				_, vok := value.(map[string]interface{})
+				rlist, rok := result.([]interface{})
+				// if the original value is a map and the returned value is a
+				// list it means we've included a YAML lists
+				if vok && rok {
+					newValues = append(newValues, rlist...)
+				} else {
+					newValues = append(newValues, result)
+				}
 			}
 		}
 		return newValues, nil
@@ -565,7 +586,7 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 
 }
 
-func LoadYaml(filePath string) (map[string]interface{}, error) {
+func LoadYaml(filePath string) (interface{}, error) {
 	return loadYaml(filePath, ioutil.ReadFile)
 }
 
@@ -651,7 +672,7 @@ func parseRefs(data interface{}, settings map[string]interface{}) (interface{}, 
 	return data, nil
 }
 
-func loadYaml(filePath string, reader Reader) (map[string]interface{}, error) {
+func loadYaml(filePath string, reader Reader) (interface{}, error) {
 
 	fileContent, err := reader(filePath)
 	if err != nil {
@@ -673,10 +694,8 @@ func loadYaml(filePath string, reader Reader) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("not a map")
 	} else if withRefs, err := parseRefs(mapWithIncludes, mapWithIncludes); err != nil {
 		return nil, err
-	} else if mapWithRefs, ok := withRefs.(map[string]interface{}); !ok {
-		return nil, fmt.Errorf("not a map")
 	} else {
-		return mapWithRefs, nil
+		return withRefs, nil
 	}
 }
 
