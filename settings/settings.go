@@ -569,6 +569,88 @@ func LoadYaml(filePath string) (map[string]interface{}, error) {
 	return loadYaml(filePath, ioutil.ReadFile)
 }
 
+var numberRegex = regexp.MustCompile(`^\d+$`)
+
+func getRef(settings map[string]interface{}, key string) (interface{}, error) {
+	keyComponents := strings.Split(key, ".")
+	parsedKeyComponents := make([]interface{}, len(keyComponents))
+	for i, keyComponent := range keyComponents {
+		if match := numberRegex.FindString(keyComponent); match != "" {
+			// this is a number
+			if intValue, err := strconv.ParseInt(keyComponent, 10, 0); err != nil {
+				return nil, fmt.Errorf("key component '%s' is not an integer", keyComponent)
+			} else {
+				parsedKeyComponents[i] = intValue
+			}
+		} else {
+			parsedKeyComponents[i] = keyComponent
+		}
+	}
+	var currentValue interface{} = settings
+	for _, keyComponent := range parsedKeyComponents {
+		switch cs := currentValue.(type) {
+		case map[string]interface{}:
+			if strKey, ok := keyComponent.(string); !ok {
+				return nil, fmt.Errorf("expected a string key component")
+			} else {
+				var ok bool
+				if currentValue, ok = cs[strKey]; !ok {
+					return nil, fmt.Errorf("key '%s' not found", strKey)
+				}
+			}
+		case []interface{}:
+			if intKey, ok := keyComponent.(int64); !ok {
+				return nil, fmt.Errorf("expected an integer key component")
+			} else {
+				if intKey >= int64(len(cs)) {
+					return nil, fmt.Errorf("integer key '%d' out of range", intKey)
+				}
+				currentValue = cs[intKey]
+			}
+		default:
+			return nil, fmt.Errorf("invalid type")
+		}
+	}
+	// all key components have correctly resolved
+	return currentValue, nil
+}
+
+func parseRefs(data interface{}, settings map[string]interface{}) (interface{}, error) {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		if value, ok := v["$ref"]; ok && len(v) == 1 {
+			if strValue, ok := value.(string); !ok {
+				return nil, fmt.Errorf("expected a string value")
+			} else {
+				if refValue, err := getRef(settings, strValue); err != nil {
+					return nil, err
+				} else {
+					return refValue, nil
+				}
+			}
+		} else {
+			for key, value := range v {
+				if newValue, err := parseRefs(value, settings); err != nil {
+					return nil, err
+				} else {
+					v[key] = newValue
+				}
+			}
+		}
+	case []interface{}:
+		newValues := make([]interface{}, 0, len(v))
+		for _, value := range v {
+			if newValue, err := parseRefs(value, settings); err != nil {
+				return nil, err
+			} else {
+				newValues = append(newValues, newValue)
+			}
+		}
+		return newValues, nil
+	}
+	return data, nil
+}
+
 func loadYaml(filePath string, reader Reader) (map[string]interface{}, error) {
 
 	fileContent, err := reader(filePath)
@@ -585,10 +667,16 @@ func loadYaml(filePath string, reader Reader) (map[string]interface{}, error) {
 	if !ok {
 		return nil, fmt.Errorf("Non-string keys encountered in file '%s'", filePath)
 	}
-	if mapWithIncludes, err := loadIncludes(deepStringMap, filePath, reader); err != nil {
+	if withIncludes, err := loadIncludes(deepStringMap, filePath, reader); err != nil {
 		return nil, err
+	} else if mapWithIncludes, ok := withIncludes.(map[string]interface{}); !ok {
+		return nil, fmt.Errorf("not a map")
+	} else if withRefs, err := parseRefs(mapWithIncludes, mapWithIncludes); err != nil {
+		return nil, err
+	} else if mapWithRefs, ok := withRefs.(map[string]interface{}); !ok {
+		return nil, fmt.Errorf("not a map")
 	} else {
-		return mapWithIncludes.(map[string]interface{}), nil
+		return mapWithRefs, nil
 	}
 }
 

@@ -21,6 +21,36 @@ import (
 	"testing"
 )
 
+func TestRefs(t *testing.T) {
+	settings := map[string]interface{}{
+		"test": map[string]interface{}{
+			"$ref": "foo.bar",
+		},
+		"list": []interface{}{
+			map[string]interface{}{
+				"$ref": "foo.bar",
+			},
+		},
+		"foo": map[string]interface{}{
+			"bar": 10,
+		},
+	}
+	refSettings, err := parseRefs(settings, settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refSettingsMap, ok := refSettings.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected a map")
+	}
+	if i, ok := refSettingsMap["test"].(int); !ok || i != 10 {
+		t.Error("ref not parsed")
+	}
+	if i, ok := refSettingsMap["list"].([]interface{})[0].(int); !ok || i != 10 {
+		t.Error("ref not parsed")
+	}
+}
+
 func TestIncludes(t *testing.T) {
 	includes := map[string]string{
 		"/test/another-include.yml": "foo: bar",
