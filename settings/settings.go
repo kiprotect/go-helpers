@@ -523,9 +523,19 @@ func loadVars(data interface{}, context map[string]interface{}) error {
 			valuesWithContext[key] = value
 		}
 		for key, value := range context {
+			if _, ok := valuesWithContext[key]; ok {
+				log.Warnf("Warning, variable '%s' is already defined, overwriting...", key)
+			}
 			valuesWithContext[key] = value
 		}
 		return InsertVars(data, valuesWithContext)
+	}
+}
+
+func generateContext(path string) map[string]interface{} {
+	return map[string]interface{}{
+		"PATH": path,
+		"DIR":  filepath.Dir(path),
 	}
 }
 
@@ -564,7 +574,7 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 							return nil, fmt.Errorf("expected a map")
 							// we merge the values
 						} else {
-							if err := loadVars(newMapValue, map[string]interface{}{}); err != nil {
+							if err := loadVars(newMapValue, generateContext(filePath)); err != nil {
 								return nil, err
 							}
 							Merge(newValues, newMapValue)
@@ -715,7 +725,7 @@ func loadYaml(filePath string, reader Reader) (interface{}, error) {
 		return nil, err
 	} else if withRefs, err := parseRefs(withIncludes, withIncludes); err != nil {
 		return nil, err
-	} else if err := loadVars(withRefs, map[string]interface{}{}); err != nil {
+	} else if err := loadVars(withRefs, generateContext(filePath)); err != nil {
 		return nil, err
 	} else {
 		return withRefs, nil
