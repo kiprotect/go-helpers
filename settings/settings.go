@@ -248,11 +248,7 @@ func (self *Settings) Load(settingsPath string) error {
 			Merge(self.Values, mapSettings)
 		}
 	}
-	if values, err := ParseVars(self.Values); err != nil {
-		return err
-	} else {
-		return InsertVars(self.Values, values)
-	}
+	return nil
 }
 
 var VarsForm = forms.Form{
@@ -316,13 +312,18 @@ var LiteralForm = forms.Form{
 	},
 }
 
-func ParseVars(settings map[string]interface{}) (map[string]interface{}, error) {
+func ParseVars(settings interface{}) (map[string]interface{}, error) {
 	return parseVars(settings, os.Stdin)
 }
 
-func parseVars(settings map[string]interface{}, reader io.Reader) (map[string]interface{}, error) {
+func parseVars(settings interface{}, reader io.Reader) (map[string]interface{}, error) {
+	settingsMap, ok := settings.(map[string]interface{})
+	// this is not a map, we do not return any variables
+	if !ok {
+		return map[string]interface{}{}, nil
+	}
 	values := make(map[string]interface{})
-	varsObj, ok := settings["vars"]
+	varsObj, ok := settingsMap["vars"]
 	if !ok {
 		// no variables defined
 		return values, nil
@@ -420,8 +421,8 @@ func parseVars(settings map[string]interface{}, reader io.Reader) (map[string]in
 	return values, nil
 }
 
-var fullVarRegex = regexp.MustCompile(`^\$([a-z][a-z0-9_]*)$`)
-var innerVarRegex = regexp.MustCompile(`^(|.*?[^\$])?\$([a-z][a-z0-9_]*)(.*)$`)
+var fullVarRegex = regexp.MustCompile(`^\$([a-zA-Z][a-zA-Z0-9_]*)$`)
+var innerVarRegex = regexp.MustCompile(`^(|.*?[^\$])?\$([a-zA-Z][a-zA-Z0-9_]*)(.*)$`)
 var escapeRegex = regexp.MustCompile(`\$\$`)
 
 func replaceStringVar(value string, values map[string]interface{}) (interface{}, error) {
@@ -513,6 +514,21 @@ func getPath(basePath, filePath string) (string, error) {
 
 type Reader func(string) ([]byte, error)
 
+func loadVars(data interface{}, context map[string]interface{}) error {
+	if values, err := ParseVars(data); err != nil {
+		return err
+	} else {
+		valuesWithContext := make(map[string]interface{})
+		for key, value := range values {
+			valuesWithContext[key] = value
+		}
+		for key, value := range context {
+			valuesWithContext[key] = value
+		}
+		return InsertVars(data, valuesWithContext)
+	}
+}
+
 func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}, error) {
 	switch v := data.(type) {
 	case map[string]interface{}:
@@ -548,6 +564,9 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 							return nil, fmt.Errorf("expected a map")
 							// we merge the values
 						} else {
+							if err := loadVars(newMapValue, map[string]interface{}{}); err != nil {
+								return nil, err
+							}
 							Merge(newValues, newMapValue)
 						}
 					}
@@ -695,6 +714,8 @@ func loadYaml(filePath string, reader Reader) (interface{}, error) {
 	if withIncludes, err := loadIncludes(deepStringObj, filePath, reader); err != nil {
 		return nil, err
 	} else if withRefs, err := parseRefs(withIncludes, withIncludes); err != nil {
+		return nil, err
+	} else if err := loadVars(withRefs, map[string]interface{}{}); err != nil {
 		return nil, err
 	} else {
 		return withRefs, nil
