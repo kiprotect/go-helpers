@@ -21,6 +21,39 @@ import (
 	"testing"
 )
 
+func TestContext(t *testing.T) {
+	includes := map[string]string{
+		"/bar/include.yml": "foo: $PATH\nbar: $DIR",
+		"/main.yml": `
+$include:
+  - bar/include.yml
+`,
+	}
+	reader := func(path string) ([]byte, error) {
+		include, ok := includes[path]
+		t.Log(path)
+		if !ok {
+			return nil, fmt.Errorf("not found")
+		}
+		return []byte(include), nil
+	}
+
+	settings, err := loadYaml("/main.yml", reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settingsMap, ok := settings.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected a map")
+	}
+	if foo, ok := settingsMap["foo"].(string); !ok || foo != "/bar/include.yml" {
+		t.Fatal("PATH context variable not present")
+	}
+	if bar, ok := settingsMap["bar"].(string); !ok || bar != "/bar" {
+		t.Fatal("DIR context variable not present")
+	}
+}
+
 func TestRefs(t *testing.T) {
 	settings := map[string]interface{}{
 		"test": map[string]interface{}{
