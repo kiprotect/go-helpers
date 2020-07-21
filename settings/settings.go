@@ -332,6 +332,9 @@ func parseVars(settings interface{}, reader io.Reader) (map[string]interface{}, 
 	if !ok {
 		return nil, fmt.Errorf("invalid variables format")
 	}
+	// we rename the 'vars' entry to '_vars' to make avoid double parsing
+	delete(settingsMap, "vars")
+	settingsMap["_vars"] = vars
 	for key, configObj := range vars {
 		config, ok := maps.ToStringMap(configObj)
 		if !ok {
