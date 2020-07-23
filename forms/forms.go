@@ -31,6 +31,10 @@ type Validator interface {
 	Validate(input interface{}, values map[string]interface{}) (interface{}, error)
 }
 
+type ContextValidator interface {
+	SetContext(context map[string]interface{}) error
+}
+
 type TransformFunction func(interface{}, map[string]interface{}) (interface{}, error)
 
 // https://stackoverflow.com/questions/35790935/using-reflection-in-go-to-get-the-name-of-a-struct
@@ -117,11 +121,30 @@ func (f *FormError) Error() string {
 }
 
 type Form struct {
-	Validator    FormValidator `json:"-"`
-	Fields       []Field       `json:"fields"`
-	Transforms   []Transform   `json:"-"`
-	Preprocessor Preprocessor  `json:"-"`
-	ErrorMsg     string        `json:"-"`
+	context      map[string]interface{} `json:"-"`
+	Validator    FormValidator          `json:"-"`
+	Fields       []Field                `json:"fields"`
+	Transforms   []Transform            `json:"-"`
+	Preprocessor Preprocessor           `json:"-"`
+	ErrorMsg     string                 `json:"-"`
+}
+
+func (f *Form) SetContext(context map[string]interface{}) error {
+	for _, field := range f.Fields {
+		for _, validator := range field.Validators {
+			if contextValidator, ok := validator.(ContextValidator); ok {
+				if err := contextValidator.SetContext(context); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	f.context = context
+	return nil
+}
+
+func (f *Form) Context() map[string]interface{} {
+	return f.context
 }
 
 func sanitizeURLValues(input map[string]interface{}) map[string]interface{} {
@@ -494,6 +517,13 @@ func (f IsList) Validate(input interface{}, values map[string]interface{}) (inte
 		return validatedList, nil
 	}
 	return input, nil
+}
+
+func (f IsStringMap) SetContext(context map[string]interface{}) error {
+	if f.Form != nil {
+		return f.SetContext(context)
+	}
+	return nil
 }
 
 func (f IsStringMap) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
