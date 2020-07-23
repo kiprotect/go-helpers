@@ -32,7 +32,7 @@ type Validator interface {
 }
 
 type ContextValidator interface {
-	SetContext(context map[string]interface{}) error
+	SetContext(context map[string]interface{})
 }
 
 type TransformFunction func(interface{}, map[string]interface{}) (interface{}, error)
@@ -129,18 +129,15 @@ type Form struct {
 	ErrorMsg     string                 `json:"-"`
 }
 
-func (f *Form) SetContext(context map[string]interface{}) error {
+func (f *Form) SetContext(context map[string]interface{}) {
 	for _, field := range f.Fields {
 		for _, validator := range field.Validators {
 			if contextValidator, ok := validator.(ContextValidator); ok {
-				if err := contextValidator.SetContext(context); err != nil {
-					return err
-				}
+				contextValidator.SetContext(context)
 			}
 		}
 	}
 	f.context = context
-	return nil
 }
 
 func (f *Form) Context() map[string]interface{} {
@@ -519,11 +516,10 @@ func (f IsList) Validate(input interface{}, values map[string]interface{}) (inte
 	return input, nil
 }
 
-func (f IsStringMap) SetContext(context map[string]interface{}) error {
+func (f IsStringMap) SetContext(context map[string]interface{}) {
 	if f.Form != nil {
-		return f.SetContext(context)
+		f.SetContext(context)
 	}
-	return nil
 }
 
 func (f IsStringMap) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
