@@ -17,7 +17,6 @@ package forms
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"github.com/kiprotect/go-helpers/errors"
 	"reflect"
@@ -27,12 +26,16 @@ import (
 	"time"
 )
 
+type Serializable interface {
+	Serialize(context map[string]interface{}) interface{}
+}
+
 type Validator interface {
 	Validate(input interface{}, values map[string]interface{}) (interface{}, error)
 }
 
 type ContextValidator interface {
-	SetContext(context map[string]interface{})
+	ValidateWithContext(input interface{}, values map[string]interface{}, context map[string]interface{}) (interface{}, error)
 }
 
 type TransformFunction func(interface{}, map[string]interface{}) (interface{}, error)
@@ -47,27 +50,32 @@ func getType(myvar interface{}) string {
 }
 
 type SerializedValidator struct {
-	Type string    `json:"type"`
-	Data Validator `json:"data"`
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
 }
 
-func (f Field) MarshalJSON() ([]byte, error) {
+func (f Field) Serialize(context map[string]interface{}) interface{} {
 
 	validators := make([]SerializedValidator, 0)
 
 	for _, validator := range f.Validators {
+		var data interface{}
+		if serializableValidator, ok := validator.(Serializable); ok {
+			data = serializableValidator.Serialize(context)
+		} else {
+			// we include the raw validator
+			data = validator
+		}
 		validators = append(validators, SerializedValidator{
 			Type: ToSnakeCase(getType(validator)),
-			Data: validator,
+			Data: data,
 		})
 	}
 
-	s := map[string]interface{}{
+	return map[string]interface{}{
 		"name":       f.Name,
 		"validators": validators,
 	}
-
-	return json.Marshal(s)
 }
 
 type Field struct {
@@ -121,27 +129,11 @@ func (f *FormError) Error() string {
 }
 
 type Form struct {
-	context      map[string]interface{} `json:"-"`
-	Validator    FormValidator          `json:"-"`
-	Fields       []Field                `json:"fields"`
-	Transforms   []Transform            `json:"-"`
-	Preprocessor Preprocessor           `json:"-"`
-	ErrorMsg     string                 `json:"-"`
-}
-
-func (f *Form) SetContext(context map[string]interface{}) {
-	for _, field := range f.Fields {
-		for _, validator := range field.Validators {
-			if contextValidator, ok := validator.(ContextValidator); ok {
-				contextValidator.SetContext(context)
-			}
-		}
-	}
-	f.context = context
-}
-
-func (f *Form) Context() map[string]interface{} {
-	return f.context
+	Validator    FormValidator `json:"-"`
+	Fields       []Field       `json:"fields"`
+	Transforms   []Transform   `json:"-"`
+	Preprocessor Preprocessor  `json:"-"`
+	ErrorMsg     string        `json:"-"`
 }
 
 func sanitizeURLValues(input map[string]interface{}) map[string]interface{} {
@@ -193,15 +185,33 @@ func (f *Form) ErrorMessage() string {
 	return errorMessage
 }
 
+func (f *Form) Serialize(context map[string]interface{}) interface{} {
+	fields := make([]interface{}, len(f.Fields))
+	for i, field := range f.Fields {
+		fields[i] = field.Serialize(context)
+	}
+	return map[string]interface{}{
+		"fields": fields,
+	}
+}
+
+func (f *Form) ValidateWithContext(inputs map[string]interface{}, context map[string]interface{}) (values map[string]interface{}, validationError error) {
+	return f.validate(inputs, false, context)
+}
+
 func (f *Form) Validate(inputs map[string]interface{}) (values map[string]interface{}, validationError error) {
-	return f.validate(inputs, false)
+	return f.validate(inputs, false, nil)
+}
+
+func (f *Form) ValidateUpdateWithContext(inputs map[string]interface{}, context map[string]interface{}) (values map[string]interface{}, validationError error) {
+	return f.validate(inputs, true, context)
 }
 
 func (f *Form) ValidateUpdate(inputs map[string]interface{}) (values map[string]interface{}, validationError error) {
-	return f.validate(inputs, true)
+	return f.validate(inputs, true, nil)
 }
 
-func (f *Form) validate(inputs map[string]interface{}, update bool) (values map[string]interface{}, validationError error) {
+func (f *Form) validate(inputs map[string]interface{}, update bool, context map[string]interface{}) (values map[string]interface{}, validationError error) {
 
 	errors := make(map[string][]interface{})
 	values = make(map[string]interface{})
@@ -241,7 +251,11 @@ func (f *Form) validate(inputs map[string]interface{}, update bool) (values map[
 					continue
 				}
 
-				value, err = validator.Validate(value, values)
+				if contextValidator, ok := validator.(ContextValidator); ok && context != nil {
+					value, err = contextValidator.ValidateWithContext(value, values, context)
+				} else {
+					value, err = validator.Validate(value, values)
+				}
 				if err != nil {
 					addError(key, err)
 					break
@@ -516,13 +530,15 @@ func (f IsList) Validate(input interface{}, values map[string]interface{}) (inte
 	return input, nil
 }
 
-func (f IsStringMap) SetContext(context map[string]interface{}) {
-	if f.Form != nil {
-		f.SetContext(context)
-	}
+func (f IsStringMap) ValidateWithContext(input interface{}, values map[string]interface{}, context map[string]interface{}) (interface{}, error) {
+	return f.validate(input, values, context)
 }
 
 func (f IsStringMap) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
+	return f.validate(input, values, nil)
+}
+
+func (f IsStringMap) validate(input interface{}, values map[string]interface{}, context map[string]interface{}) (interface{}, error) {
 	sm, ok := input.(map[string]interface{})
 	if !ok {
 		m, ok := input.(map[interface{}]interface{})
@@ -540,7 +556,7 @@ func (f IsStringMap) Validate(input interface{}, values map[string]interface{}) 
 	}
 	// if validators for the map values are defined we run them on each entry
 	if f.Form != nil {
-		if params, err := f.Form.Validate(sm); err != nil {
+		if params, err := f.Form.ValidateWithContext(sm, context); err != nil {
 			return nil, err
 		} else {
 			return params, nil
