@@ -17,6 +17,7 @@ package forms
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/kiprotect/go-helpers/errors"
 	"reflect"
@@ -52,6 +53,10 @@ func getType(myvar interface{}) string {
 type SerializedValidator struct {
 	Type string      `json:"type"`
 	Data interface{} `json:"data"`
+}
+
+func (f Field) MarshalJSON() ([]byte, error) {
+	return json.Marshal(f.Serialize(map[string]interface{}{}))
 }
 
 func (f Field) Serialize(context map[string]interface{}) interface{} {
@@ -371,6 +376,8 @@ func (f IsBytes) Validate(input interface{}, values map[string]interface{}) (int
 	switch f.Encoding {
 	case "base64":
 		return base64.StdEncoding.DecodeString(str)
+	case "base64-url":
+		return base64.URLEncoding.DecodeString(str)
 	case "hex":
 		return hex.DecodeString(str)
 	}
