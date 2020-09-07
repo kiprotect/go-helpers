@@ -323,7 +323,9 @@ type IsString struct {
 }
 
 type IsBytes struct {
-	Encoding string `json:"encoding"`
+	Encoding  string `json:"encoding"`
+	MinLength int    `json:"min_length"`
+	MaxLength int    `json:"max_length"`
 }
 
 type IsBoolean struct {
@@ -372,18 +374,34 @@ func (f IsBytes) Validate(input interface{}, values map[string]interface{}) (int
 		return nil, fmt.Errorf("expected a string")
 	}
 
+	var b []byte
+	var err error
+
 	// we try to decode the string
 	switch f.Encoding {
 	case "base64":
-		return base64.StdEncoding.DecodeString(str)
+		if b, err = base64.StdEncoding.DecodeString(str); err != nil {
+			return nil, err
+		}
 	case "base64-url":
-		return base64.URLEncoding.DecodeString(str)
+		if b, err = base64.URLEncoding.DecodeString(str); err != nil {
+			return nil, err
+		}
 	case "hex":
-		return hex.DecodeString(str)
+		if b, err = hex.DecodeString(str); err != nil {
+			return nil, err
+		}
+	default:
+		// no encoding matched
+		return nil, fmt.Errorf("invalid encoding: %s", f.Encoding)
 	}
-
-	// no encoding matched
-	return nil, fmt.Errorf("invalid encoding: %s", f.Encoding)
+	if f.MinLength != 0 && len(b) < f.MinLength {
+		return nil, fmt.Errorf("binary array must be at least %d bytes long", f.MinLength)
+	}
+	if f.MaxLength != 0 && len(b) > f.MaxLength {
+		return nil, fmt.Errorf("binary array must be at most %d bytes long", f.MaxLength)
+	}
+	return b, nil
 }
 
 func (f IsHex) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
