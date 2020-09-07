@@ -134,6 +134,7 @@ func (f *FormError) Error() string {
 }
 
 type Form struct {
+	SanitizeKeys bool          `json:"sanitizeKeys"`
 	Validator    FormValidator `json:"-"`
 	Fields       []Field       `json:"fields"`
 	Transforms   []Transform   `json:"-"`
@@ -220,7 +221,12 @@ func (f *Form) validate(inputs map[string]interface{}, update bool, context map[
 
 	errors := make(map[string][]interface{})
 	values = make(map[string]interface{})
-	sanitizedInput := sanitizeURLValues(inputs)
+	var sanitizedInput map[string]interface{}
+	if f.SanitizeKeys {
+		sanitizedInput = sanitizeURLValues(inputs)
+	} else {
+		sanitizedInput = inputs
+	}
 
 	addError := func(key string, err error) {
 		if errors[key] == nil {
