@@ -16,12 +16,23 @@ package strings
 
 import (
 	"fmt"
+	"strings"
 )
 
 //Helper function to check if a list of strings contains a given string.
 func Contains(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+//Helper function to check if at least one string in list has a given prefix.
+func HasPrefix(a string, list []string) bool {
+	for _, b := range list {
+		if strings.HasPrefix(b, a) {
 			return true
 		}
 	}
