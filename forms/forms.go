@@ -335,6 +335,7 @@ type IsBytes struct {
 }
 
 type IsBoolean struct {
+	Convert bool `json:"convert"`
 }
 
 type MatchesRegex struct {
@@ -790,6 +791,16 @@ func (f IsString) Validate(input interface{}, values map[string]interface{}) (in
 func (f IsBoolean) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
 	b, ok := input.(bool)
 	if !ok {
+		if f.Convert {
+			s, ok := input.(string)
+			if ok {
+				if s == "true" {
+					return true, nil
+				} else if s == "false" {
+					return false, nil
+				}
+			}
+		}
 		return nil, fmt.Errorf("expected a boolean")
 	}
 	return b, nil
