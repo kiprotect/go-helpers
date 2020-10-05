@@ -9,10 +9,13 @@ type BasicTestStruct struct {
 	Bar        int
 	StringList []string
 	IntList    []int
+	Map        map[string]interface{}
+	Interface  interface{}
 }
 
 type EmbeddedStruct struct {
-	Embedded string
+	Embedded map[string]string
+	Name string
 }
 
 type ComplexTestStruct struct {
@@ -38,10 +41,15 @@ func TestBasicCoerce(t *testing.T) {
 		"foo":         "test",
 		"bar":         4,
 		"string_list": []string{"a", "b", "c"},
+		"map": map[string]interface{}{"test": "test"},
+		"interface": "foo",
 	}
 	bt := &BasicTestStruct{}
 	if err := Coerce(bt, testMap); err != nil {
 		t.Fatal(err)
+	}
+	if bt.Interface != "foo" {
+		t.Fatalf("expected 'foo' as value of Interface")
 	}
 	if bt.Foo != "test" {
 		t.Fatalf("expected 'test' as value of Foo")
@@ -59,7 +67,8 @@ func TestBasicCoerce(t *testing.T) {
 
 func TestComplexCoerce(t *testing.T) {
 	testMap := map[string]interface{}{
-		"embedded": "foo",
+		"embedded": map[string]string{"foo" : "foo"},
+		"name": "slim shady",
 		"foo": "test",
 		"bar": 4,
 		"baz": map[string]interface{}{
@@ -89,7 +98,10 @@ func TestComplexCoerce(t *testing.T) {
 	if err := Coerce(bt, testMap); err != nil {
 		t.Fatal(err)
 	}
-	if bt.Embedded != "foo" {
+	if bt.Name != "slim shady" {
+		t.Fatalf("name doesn't match")
+	}
+	if bt.Embedded["foo"] != "foo" {
 		t.Fatalf("expected embedded value to be set")
 	}
 	if bt.Foo != "test" {
