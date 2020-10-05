@@ -11,7 +11,12 @@ type BasicTestStruct struct {
 	IntList    []int
 }
 
+type EmbeddedStruct struct {
+	Embedded string
+}
+
 type ComplexTestStruct struct {
+	EmbeddedStruct
 	Foo        string
 	Bar        int
 	Baz        Baz
@@ -54,6 +59,7 @@ func TestBasicCoerce(t *testing.T) {
 
 func TestComplexCoerce(t *testing.T) {
 	testMap := map[string]interface{}{
+		"embedded": "foo",
 		"foo": "test",
 		"bar": 4,
 		"baz": map[string]interface{}{
@@ -82,6 +88,9 @@ func TestComplexCoerce(t *testing.T) {
 	bt := &ComplexTestStruct{}
 	if err := Coerce(bt, testMap); err != nil {
 		t.Fatal(err)
+	}
+	if bt.Embedded != "foo" {
+		t.Fatalf("expected embedded value to be set")
 	}
 	if bt.Foo != "test" {
 		t.Fatalf("expected 'test' as value of Foo")
