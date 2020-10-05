@@ -65,6 +65,18 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 	sourceType := typeOf(source)
 	targetValue := valueOf(target)
 	sourceValue := valueOf(source)
+
+	if targetType.AssignableTo(sourceType) {
+		targetValue.Set(sourceValue)
+		return nil
+	}
+
+	if targetType.Kind() == reflect.Interface {
+		// this is an interface
+		targetValue.Set(sourceValue)
+		return nil
+	}
+
 	switch sourceType.Kind() {
 	case reflect.Slice:
 		// this is a slice, so we expect the target to be a slice too
@@ -74,7 +86,7 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 		elemType := targetType.Elem()
 		targetSliceValue := reflect.MakeSlice(reflect.SliceOf(elemType), 0, 0)
 		for i := 0; i < sourceValue.Len(); i++ {
-			path = append(path, i)
+			slicePath := append(path, i)
 			sourceElemValue := sourceValue.Index(i)
 			var targetValue reflect.Value
 			if elemType.Kind() == reflect.Ptr {
@@ -84,7 +96,7 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 				// the slice expects a literal type
 				targetValue = reflect.New(elemType)
 			}
-			if err := coerce(targetValue.Interface(), sourceElemValue.Interface(), path); err != nil {
+			if err := coerce(targetValue.Interface(), sourceElemValue.Interface(), slicePath); err != nil {
 				return err
 			}
 			if elemType.Kind() == reflect.Ptr {
@@ -101,26 +113,24 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 		// map values to struct fields we further assume that the map has only string
 		// keys, and we don't use reflection to iterate over map keys like we do
 		// for the slices above.
+		if targetType.Kind() != reflect.Struct {
+			return MakeCoerceError(fmt.Sprintf("expected a struct to coerce a map into, got '%s'", targetType.Kind()), path)
+		}
 		sourceMap, ok := source.(map[string]interface{})
 		if !ok {
 			return MakeCoerceError(fmt.Sprintf("expected a string map"), path)
-		}
-		if targetType.Kind() != reflect.Struct {
-			return MakeCoerceError(fmt.Sprintf("expected a struct to coerce a map into"), path)
 		}
 		for i := 0; i < targetType.NumField(); i++ {
 			targetFieldType := targetType.Field(i)
 			targetFieldValue := targetValue.Field(i)
 			sourceName := ToSnakeCase(targetFieldType.Name)
-			var sourceData interface{}
-			var ok bool			
+			sourceData, ok := sourceMap[sourceName]
+			mapPath := append(path, sourceName)
 			if targetFieldType.Anonymous {
+				// this is an anonymous field
+				mapPath = append(path, fmt.Sprintf("%s(anonymous)", sourceName))
 				sourceData = sourceMap
 				ok = true
-				path = append(path, fmt.Sprintf("%s(embedded)", sourceName))
-			} else {
-				sourceData, ok = sourceMap[sourceName]
-				path = append(path, sourceName)
 			}
 			if !ok {
 				tags := ExtractTags(targetFieldType, "coerce")
@@ -131,14 +141,14 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 					}
 				}
 				if required {
-					return MakeCoerceError(fmt.Sprintf("missing value for required key '%s'", sourceName), path)
+					return MakeCoerceError(fmt.Sprintf("missing value for required key '%s'", sourceName), mapPath)
 				}
 				continue
 			}
 			sourceValue = valueOf(sourceData)
 			sourceValueType := typeOf(sourceData)
 			if !targetFieldValue.CanSet() {
-				return MakeCoerceError(fmt.Sprintf("struct value '%s' of type '%s' is not assignable", targetFieldType.Name, targetFieldType.Type), path)
+				return MakeCoerceError(fmt.Sprintf("struct value '%s' of type '%s' is not assignable", targetFieldType.Name, targetFieldType.Type), mapPath)
 			}
 			// if the target value is not assignable to the source value, it is probably a
 			// struct itself that the source value should be coerced into
@@ -157,12 +167,11 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 				// we first check if we can generate interface values for both source and target
 				if targetFieldValuePtr.CanInterface() && sourceValue.CanInterface() {
 					// we then try to coerce the source interface value into the target interface value
-					path = append(path, sourceName)
-					if err := coerce(targetFieldValuePtr.Interface(), sourceValue.Interface(), path); err != nil {
+					if err := coerce(targetFieldValuePtr.Interface(), sourceValue.Interface(), mapPath); err != nil {
 						return err
 					}
 				} else {
-					return MakeCoerceError(fmt.Sprintf("cannot assign map value '%s' to struct field '%s'", sourceName, targetFieldType.Name), path)
+					return MakeCoerceError(fmt.Sprintf("cannot assign map value '%s' to struct field '%s'", sourceName, targetFieldType.Name), mapPath)
 				}
 			} else {
 				targetFieldValue.Set(sourceValue)
