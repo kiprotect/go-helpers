@@ -112,8 +112,16 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 			targetFieldType := targetType.Field(i)
 			targetFieldValue := targetValue.Field(i)
 			sourceName := ToSnakeCase(targetFieldType.Name)
-			sourceData, ok := sourceMap[sourceName]
-			path = append(path, sourceName)
+			var sourceData interface{}
+			var ok bool			
+			if targetFieldType.Anonymous {
+				sourceData = sourceMap
+				ok = true
+				path = append(path, fmt.Sprintf("%s(embedded)", sourceName))
+			} else {
+				sourceData, ok = sourceMap[sourceName]
+				path = append(path, sourceName)
+			}
 			if !ok {
 				tags := ExtractTags(targetFieldType, "coerce")
 				required := false
