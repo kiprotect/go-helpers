@@ -124,7 +124,20 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 		for i := 0; i < targetType.NumField(); i++ {
 			targetFieldType := targetType.Field(i)
 			targetFieldValue := targetValue.Field(i)
-			sourceName := ToSnakeCase(targetFieldType.Name)
+
+			coerceTags := ExtractTags(targetFieldType, "coerce")
+			jsonTags := ExtractTags(targetFieldType, "json")
+
+			var sourceName string
+
+			if len(coerceTags) > 0 && coerceTags[0].Flag {
+				sourceName = coerceTags[0].Name
+			} else if len(jsonTags) > 0 && jsonTags[0].Flag {
+				sourceName = jsonTags[0].Name
+			} else {	
+				sourceName = ToSnakeCase(targetFieldType.Name)
+			}
+
 			sourceData, ok := sourceMap[sourceName]
 			mapPath := append(path, sourceName)
 			if targetFieldType.Anonymous {
@@ -134,9 +147,8 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 				ok = true
 			}
 			if !ok {
-				tags := ExtractTags(targetFieldType, "coerce")
 				required := false
-				for _, tag := range tags {
+				for _, tag := range coerceTags {
 					if tag.Flag && tag.Name == "required" {
 						required = true
 					}
