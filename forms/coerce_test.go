@@ -7,6 +7,7 @@ import (
 type BasicTestStruct struct {
 	Foo        string
 	Bar        int
+	Bool       bool
 	StringList []string
 	IntList    []int
 	Map        map[string]interface{}
@@ -40,6 +41,7 @@ func TestBasicCoerce(t *testing.T) {
 	testMap := map[string]interface{}{
 		"foo":         "test",
 		"bar":         4,
+		"bool":        true,
 		"string_list": []string{"a", "b", "c"},
 		"map":         map[string]interface{}{"test": "test"},
 		"interface":   "foo",
@@ -50,6 +52,9 @@ func TestBasicCoerce(t *testing.T) {
 	}
 	if bt.Interface != "foo" {
 		t.Fatalf("expected 'foo' as value of Interface")
+	}
+	if bt.Bool != true {
+		t.Fatalf("expected true as value of 'Bool'")
 	}
 	if bt.Foo != "test" {
 		t.Fatalf("expected 'test' as value of Foo")
