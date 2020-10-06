@@ -130,12 +130,17 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 
 			var sourceName string
 
-			if len(coerceTags) > 0 && coerceTags[0].Flag {
-				sourceName = coerceTags[0].Name
-			} else if len(jsonTags) > 0 && jsonTags[0].Flag {
-				sourceName = jsonTags[0].Name
-			} else {	
-				sourceName = ToSnakeCase(targetFieldType.Name)
+			for _, tag := range coerceTags {
+				if !tag.Flag && tag.Name == "name" {
+					sourceName = tag.Value
+				}
+			}
+			if sourceName == "" {
+				if len(jsonTags) > 0 && jsonTags[0].Flag {
+					sourceName = jsonTags[0].Name
+				} else {	
+					sourceName = ToSnakeCase(targetFieldType.Name)
+				}
 			}
 
 			sourceData, ok := sourceMap[sourceName]
