@@ -219,7 +219,7 @@ func (f *Form) ValidateUpdate(inputs map[string]interface{}) (values map[string]
 
 func (f *Form) validate(inputs map[string]interface{}, update bool, context map[string]interface{}) (values map[string]interface{}, validationError error) {
 
-	errors := make(map[string][]interface{})
+	errors := make(map[string]interface{})
 	values = make(map[string]interface{})
 	var sanitizedInput map[string]interface{}
 	if f.SanitizeKeys {
@@ -228,16 +228,13 @@ func (f *Form) validate(inputs map[string]interface{}, update bool, context map[
 		sanitizedInput = inputs
 	}
 
-	addError := func(key string, err error) {
-		if errors[key] == nil {
-			errors[key] = make([]interface{}, 0)
-		}
+	setError := func(key string, err error) {
 		if _, ok := err.(*FormError); ok {
 			// form errors we include in their structured form
-			errors[key] = append(errors[key], err)
+			errors[key] = err
 		} else {
 			// for normal errors we just include the message
-			errors[key] = append(errors[key], err.Error())
+			errors[key] = err.Error()
 		}
 	}
 
@@ -268,7 +265,7 @@ func (f *Form) validate(inputs map[string]interface{}, update bool, context map[
 					value, err = validator.Validate(value, values)
 				}
 				if err != nil {
-					addError(key, err)
+					setError(key, err)
 					break
 				}
 				if value == nil {
@@ -278,15 +275,18 @@ func (f *Form) validate(inputs map[string]interface{}, update bool, context map[
 			}
 		}
 	}
-	for _, transform := range f.Transforms {
-		for _, function := range transform.Functions {
-			value, err := function(values[transform.Field], values)
-			if err != nil {
-				addError(transform.Field, err)
-			} else {
-				values[transform.Field] = value
+
+	if len(errors) == 0 {
+		for _, transform := range f.Transforms {
+			for _, function := range transform.Functions {
+				value, err := function(values[transform.Field], values)
+				if err != nil {
+					setError(transform.Field, err)
+				} else {
+					values[transform.Field] = value
+				}
+				break
 			}
-			break
 		}
 	}
 
@@ -298,7 +298,7 @@ func (f *Form) validate(inputs map[string]interface{}, update bool, context map[
 	hasError := false
 	if f.Validator != nil && len(errors) == 0 {
 		// if there's a validator function defined we call it
-		if err := f.Validator(values, addError); err != nil {
+		if err := f.Validator(values, setError); err != nil {
 			errorMessage = err.Error()
 			hasError = true
 		}
@@ -552,7 +552,7 @@ func (f IsList) Validate(input interface{}, values map[string]interface{}) (inte
 			for _, validator := range f.Validators {
 				var err error
 				if entry, err = validator.Validate(entry, values); err != nil {
-					return nil, err
+					return nil, MakeFormError("validation error in list value", "FORM-ERROR", map[string]interface{}{"index": i, "error": err}, nil)
 				}
 			}
 			validatedList[i] = entry

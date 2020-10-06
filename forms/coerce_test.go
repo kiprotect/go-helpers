@@ -15,7 +15,7 @@ type BasicTestStruct struct {
 
 type EmbeddedStruct struct {
 	Embedded map[string]string
-	Name string
+	Name     string
 }
 
 type ComplexTestStruct struct {
@@ -41,8 +41,8 @@ func TestBasicCoerce(t *testing.T) {
 		"foo":         "test",
 		"bar":         4,
 		"string_list": []string{"a", "b", "c"},
-		"map": map[string]interface{}{"test": "test"},
-		"interface": "foo",
+		"map":         map[string]interface{}{"test": "test"},
+		"interface":   "foo",
 	}
 	bt := &BasicTestStruct{}
 	if err := Coerce(bt, testMap); err != nil {
@@ -67,10 +67,10 @@ func TestBasicCoerce(t *testing.T) {
 
 func TestComplexCoerce(t *testing.T) {
 	testMap := map[string]interface{}{
-		"embedded": map[string]string{"foo" : "foo"},
-		"name": "slim shady",
-		"foo": "test",
-		"bar": 4,
+		"embedded": map[string]string{"foo": "foo"},
+		"name":     "slim shady",
+		"foo":      "test",
+		"bar":      4,
 		"baz": map[string]interface{}{
 			"baz": "baz",
 		},
