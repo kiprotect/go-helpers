@@ -103,32 +103,24 @@ type FormError struct {
 	errors.BaseChainableError
 }
 
-func MakeFormError(message, code string, data interface{}, base error) errors.ChainableError {
+func MakeFormError(message, code string, data map[string]interface{}, base error) errors.ChainableError {
 	return &FormError{
-		BaseChainableError: *errors.MakeError(errors.ExternalError, message, code, data, base),
+		BaseChainableError: *errors.MakeError(errors.ExternalError, makeErrorMessage(message, data), code, data, base),
 	}
 }
 
-func (f *FormError) Error() string {
-	data, ok := f.Data().(map[string][]interface{})
-	baseMessage := f.BaseChainableError.Error()
-	if !ok {
-		return baseMessage
-	}
+func makeErrorMessage(baseMessage string, data map[string]interface{}) string {
 	messages := make([]string, 0)
-	for key, values := range data {
-		strValues := make([]string, 0)
-		for _, v := range values {
-			if err, ok := v.(error); ok {
-				strValues = append(strValues, err.Error())
-			} else if str, ok := v.(string); ok {
-				strValues = append(strValues, str)
-			} else {
-				strValues = append(strValues, fmt.Sprint(v))
-			}
+	for key, value := range data {
+		var strValue string
+		if err, ok := value.(error); ok {
+			strValue = err.Error()
+		} else if str, ok := value.(string); ok {
+			strValue = str
+		} else {
+			strValue = fmt.Sprint(value)
 		}
-		errors := strings.Join(strValues, ", ")
-		messages = append(messages, fmt.Sprintf("%s(%s)", key, errors))
+		messages = append(messages, fmt.Sprintf("%s(%s)", key, strValue))
 	}
 	return baseMessage + ": " + strings.Join(messages, ", ")
 }
@@ -158,7 +150,7 @@ func (f *Form) ValidateURL(inputs map[string][]string) (map[string]interface{}, 
 	return f.Validate(cInputs)
 }
 
-func (f *Form) makeError(message string, data interface{}) error {
+func (f *Form) makeError(message string, data map[string]interface{}) error {
 	return MakeFormError(message, "FORM-ERROR", data, nil)
 }
 
@@ -179,7 +171,7 @@ func (f *Form) ValidateGeneric(inputs interface{}) (map[string]interface{}, erro
 	return f.Validate(inputsStringMap)
 }
 
-func (f *Form) MakeValidationError(data map[string][]string) error {
+func (f *Form) MakeValidationError(data map[string]interface{}) error {
 	return MakeFormError(f.ErrorMessage(), "FORM-ERROR", data, nil)
 }
 
@@ -552,7 +544,7 @@ func (f IsList) Validate(input interface{}, values map[string]interface{}) (inte
 			for _, validator := range f.Validators {
 				var err error
 				if entry, err = validator.Validate(entry, values); err != nil {
-					return nil, MakeFormError("validation error in list value", "FORM-ERROR", map[string]interface{}{"index": i, "error": err}, nil)
+					return nil, MakeFormError("validation error in list value", "FORM-ERROR", map[string]interface{}{fmt.Sprintf("%d", i): err}, nil)
 				}
 			}
 			validatedList[i] = entry

@@ -43,8 +43,6 @@ type ChainableError interface {
 	Scope() ErrorScope
 	Data() interface{}
 	Code() string
-	StructuredError(scope ErrorScope) StructuredError
-	StructuredErrorWithTraceback(scope ErrorScope) StructuredErrorWithTraceback
 	Parent() error
 }
 
@@ -72,6 +70,10 @@ func MakeError(scope ErrorScope, message, code string, data interface{}, parent 
 		data:    data,
 		parent:  parent,
 	}
+}
+
+func (c *BaseChainableError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(MakeStructuredErrorWithTraceback(c, ExternalError))
 }
 
 func (c *BaseChainableError) Scope() ErrorScope {
@@ -113,39 +115,35 @@ func (c *BaseChainableError) Parent() error {
 	return c.parent
 }
 
-func (c *BaseChainableError) StructuredError(scope ErrorScope) StructuredError {
-	if c.scope > scope {
+func MakeStructuredError(err ChainableError, scope ErrorScope) StructuredError {
+	if err.Scope() > scope {
 		return StructuredError{
 			Message: "undisclosed error",
-			Code:    c.code,
+			Code:    err.Code(),
 		}
 	}
 	return StructuredError{
-		Message: c.message,
-		Code:    c.code,
-		Data:    c.data,
+		Message: err.Message(),
+		Code:    err.Code(),
+		Data:    err.Data(),
 	}
 }
 
-func (c *BaseChainableError) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.StructuredErrorWithTraceback(ExternalError))
-}
-
-func (c *BaseChainableError) StructuredErrorWithTraceback(scope ErrorScope) StructuredErrorWithTraceback {
+func MakeStructuredErrorWithTraceback(err ChainableError, scope ErrorScope) StructuredErrorWithTraceback {
 	traceback := make([]StructuredError, 0)
-	err := c.Parent()
+	parent := err.Parent()
 	for {
-		if err == nil {
+		if parent == nil {
 			break
 		}
-		cErr, ok := err.(ChainableError)
+		cParent, ok := parent.(ChainableError)
 		if !ok {
 			// if we show internal errors we include the error message
 			// as well as its type to improve debugability.
 			if scope >= InternalError {
-				t := reflect.TypeOf(err)
+				t := reflect.TypeOf(parent)
 				traceback = append(traceback, StructuredError{
-					Message: err.Error(),
+					Message: parent.Error(),
 					Code:    "GO-ERROR",
 					Data: map[string]interface{}{
 						"type": t.Name(),
@@ -154,11 +152,11 @@ func (c *BaseChainableError) StructuredErrorWithTraceback(scope ErrorScope) Stru
 			}
 			break
 		}
-		traceback = append(traceback, cErr.StructuredError(scope))
-		err = cErr.Parent()
+		traceback = append(traceback, MakeStructuredError(cParent, scope))
+		parent = cParent.Parent()
 	}
 	return StructuredErrorWithTraceback{
-		StructuredError: c.StructuredError(scope),
+		StructuredError: MakeStructuredError(err, scope),
 		Traceback:       traceback,
 	}
 }
