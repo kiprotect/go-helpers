@@ -67,6 +67,7 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 	sourceValue := valueOf(source)
 
 	if targetType.AssignableTo(sourceType) {
+		// the source can be directly assigned to the target
 		targetValue.Set(sourceValue)
 		return nil
 	}
