@@ -308,6 +308,10 @@ type IsOptional struct {
 	DefaultGenerator func() interface{} `json:"-"`
 }
 
+type Or struct {
+	Options [][]Validator `json:"validators"`
+}
+
 type Switch struct {
 	Key   string                 `json:"key"`
 	Cases map[string][]Validator `json:"cases"`
@@ -353,6 +357,34 @@ type IsHex struct {
 	Strict          bool `json:"strict"`
 	MinLength       int  `json:"min_length"`
 	MaxLength       int  `json:"max_length"`
+}
+
+func (f Or) Validate(input interface{}, inputs map[string]interface{}) (interface{}, error) {
+	return f.validate(input, inputs, nil)
+}
+
+func (f Or) ValidateWithContext(input interface{}, inputs map[string]interface{}, context map[string]interface{}) (interface{}, error) {
+	return f.validate(input, inputs, context)
+}
+
+func (f Or) validate(input interface{}, inputs map[string]interface{}, context map[string]interface{}) (interface{}, error) {
+	for _, option := range f.Options {
+		value := input
+		var err error
+		for _, validator := range option {
+			if contextValidator, ok := validator.(ContextValidator); ok && context != nil {
+				if value, err = contextValidator.ValidateWithContext(value, inputs, context); err != nil {
+					break
+				}
+			} else if value, err = validator.Validate(value, inputs); err != nil {
+				break
+			}
+		}
+		if err == nil {
+			return value, nil
+		}
+	}
+	return nil, fmt.Errorf("no possible option worked out")
 }
 
 func (f IsBytes) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {

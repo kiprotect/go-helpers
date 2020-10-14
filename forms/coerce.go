@@ -138,7 +138,7 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 			if sourceName == "" {
 				if len(jsonTags) > 0 && jsonTags[0].Flag {
 					sourceName = jsonTags[0].Name
-				} else {	
+				} else {
 					sourceName = ToSnakeCase(targetFieldType.Name)
 				}
 			}
