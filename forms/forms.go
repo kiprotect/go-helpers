@@ -1,5 +1,5 @@
 // KIProtect Go-Helpers - Golang Utility Functions
-// Copyright (C) 2020  KIProtect GmbH (HRB 208395B) - Germany
+// Copyright (C) 2019-2021  KIProtect GmbH (HRB 208395B) - Germany
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the 3-Clause BSD License.
@@ -610,8 +610,13 @@ func (f IsStringMap) validate(input interface{}, values map[string]interface{}, 
 			sm[sk] = v
 		}
 	}
-	// if validators for the map values are defined we run them on each entry
+	// if a forms is defined for the string map we execute it
 	if f.Form != nil {
+		if context == nil {
+			context = map[string]interface{}{"_parent": values}
+		} else {
+			context["_parent"] = values
+		}
 		if params, err := f.Form.ValidateWithContext(sm, context); err != nil {
 			return nil, err
 		} else {
