@@ -18,6 +18,13 @@ import (
 	"testing"
 )
 
+type EnumType string
+
+const (
+	ValueA EnumType = "a"
+	ValueB EnumType = "b"
+)
+
 type BasicTestStruct struct {
 	Foo        string
 	Bar        int
@@ -35,6 +42,7 @@ type EmbeddedStruct struct {
 
 type ComplexTestStruct struct {
 	EmbeddedStruct
+	Enum       EnumType `coerce:"convert"`
 	Foo        string
 	Bar        int
 	Baz        Baz
@@ -89,6 +97,7 @@ func TestComplexCoerce(t *testing.T) {
 		"embedded": map[string]string{"foo": "foo"},
 		"name":     "slim shady",
 		"foo":      "test",
+		"enum":     "a",
 		"bar":      4,
 		"baz": map[string]interface{}{
 			"baz": "baz",
@@ -116,6 +125,9 @@ func TestComplexCoerce(t *testing.T) {
 	bt := &ComplexTestStruct{}
 	if err := Coerce(bt, testMap); err != nil {
 		t.Fatal(err)
+	}
+	if bt.Enum != "a" {
+		t.Fatalf("enum doesn't match")
 	}
 	if bt.Name != "slim shady" {
 		t.Fatalf("name doesn't match")
