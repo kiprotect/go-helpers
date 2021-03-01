@@ -71,10 +71,10 @@ func (c CoerceError) Error() string {
 }
 
 func Coerce(target interface{}, source interface{}) error {
-	return coerce(target, source, make([]interface{}, 0))
+	return coerce(target, source, make([]interface{}, 0), nil)
 }
 
-func coerce(target interface{}, source interface{}, path []interface{}) error {
+func coerce(target interface{}, source interface{}, path []interface{}, tags []Tag) error {
 	targetType := typeOf(target)
 	sourceType := typeOf(source)
 	targetValue := valueOf(target)
@@ -84,6 +84,23 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 		// the source can be directly assigned to the target
 		targetValue.Set(sourceValue)
 		return nil
+	}
+
+	if sourceType.ConvertibleTo(targetType) && tags != nil {
+
+		convert := false
+		for _, tag := range tags {
+			if tag.Flag && tag.Name == "convert" {
+				convert = true
+				break
+			}
+		}
+
+		// conversion needs to be specified explicitly, as it can lead to weird errors...
+		if convert {
+			targetValue.Set(sourceValue.Convert(targetType))
+			return nil
+		}
 	}
 
 	if targetType.Kind() == reflect.Interface {
@@ -111,7 +128,7 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 				// the slice expects a literal type
 				targetValue = reflect.New(elemType)
 			}
-			if err := coerce(targetValue.Interface(), sourceElemValue.Interface(), slicePath); err != nil {
+			if err := coerce(targetValue.Interface(), sourceElemValue.Interface(), slicePath, nil); err != nil {
 				return err
 			}
 			if elemType.Kind() == reflect.Ptr {
@@ -199,7 +216,7 @@ func coerce(target interface{}, source interface{}, path []interface{}) error {
 				// we first check if we can generate interface values for both source and target
 				if targetFieldValuePtr.CanInterface() && sourceValue.CanInterface() {
 					// we then try to coerce the source interface value into the target interface value
-					if err := coerce(targetFieldValuePtr.Interface(), sourceValue.Interface(), mapPath); err != nil {
+					if err := coerce(targetFieldValuePtr.Interface(), sourceValue.Interface(), mapPath, coerceTags); err != nil {
 						return err
 					}
 				} else {
