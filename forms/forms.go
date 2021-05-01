@@ -563,7 +563,15 @@ func (f IsTime) Validate(input interface{}, values map[string]interface{}) (inte
 
 }
 
+func (f IsList) ValidateWithContext(input interface{}, values map[string]interface{}, context map[string]interface{}) (interface{}, error) {
+	return f.validate(input, values, context)
+}
+
 func (f IsList) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
+	return f.validate(input, values, nil)
+}
+
+func (f IsList) validate(input interface{}, values map[string]interface{}, context map[string]interface{}) (interface{}, error) {
 	it := reflect.TypeOf(input)
 	if it == nil || it.Kind() != reflect.Slice {
 		return nil, fmt.Errorf("not a list")
@@ -575,8 +583,19 @@ func (f IsList) Validate(input interface{}, values map[string]interface{}) (inte
 			entry := vt.Index(i).Interface()
 			for _, validator := range f.Validators {
 				var err error
-				if entry, err = validator.Validate(entry, values); err != nil {
-					return nil, MakeFormError("validation error in list value", "FORM-ERROR", map[string]interface{}{fmt.Sprintf("%d", i): err}, nil)
+
+				makeError := func(err error) error {
+					return MakeFormError("validation error in list value", "FORM-ERROR", map[string]interface{}{fmt.Sprintf("%d", i): err}, nil)
+				}
+
+				if contextValidator, ok := validator.(ContextValidator); ok && context != nil {
+					if entry, err = contextValidator.ValidateWithContext(entry, values, context); err != nil {
+						return nil, makeError(err)
+					}
+				} else {
+					if entry, err = validator.Validate(entry, values); err != nil {
+						return nil, makeError(err)
+					}
 				}
 			}
 			validatedList[i] = entry
