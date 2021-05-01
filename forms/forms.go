@@ -134,6 +134,11 @@ type Form struct {
 	ErrorMsg     string        `json:"-"`
 }
 
+// this is just a convenience function to avoid importing the "forms" module
+func (f *Form) Coerce(target, source interface{}) error {
+	return Coerce(target, source)
+}
+
 func sanitizeURLValues(input map[string]interface{}) map[string]interface{} {
 	o := make(map[string]interface{})
 	for key, value := range input {
