@@ -1,6 +1,6 @@
 module github.com/kiprotect/go-helpers
 
-go 1.12
+go 1.14
 
 require (
 	github.com/sirupsen/logrus v1.4.2

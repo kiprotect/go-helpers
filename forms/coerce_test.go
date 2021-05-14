@@ -40,15 +40,25 @@ type EmbeddedStruct struct {
 	Name     string
 }
 
+type SpecialFloat struct {
+	float64
+}
+
+type SpecialString struct {
+	string
+}
+
 type ComplexTestStruct struct {
 	EmbeddedStruct
-	Enum       EnumType `coerce:"convert"`
-	Foo        string
-	Bar        int
-	Baz        Baz
-	BazPtr     *Baz
-	ZapList    []Zap
-	ZapListPtr []*Zap
+	Enum          EnumType `coerce:"convert"`
+	Foo           string
+	SpecialString SpecialString
+	SpecialFloat  SpecialFloat `coerce:"convert"`
+	Bar           int
+	Baz           Baz
+	BazPtr        *Baz
+	ZapList       []Zap
+	ZapListPtr    []*Zap
 }
 
 type Baz struct {
@@ -94,11 +104,13 @@ func TestBasicCoerce(t *testing.T) {
 
 func TestComplexCoerce(t *testing.T) {
 	testMap := map[string]interface{}{
-		"embedded": map[string]string{"foo": "foo"},
-		"name":     "slim shady",
-		"foo":      "test",
-		"enum":     "a",
-		"bar":      4,
+		"embedded":       map[string]string{"foo": "foo"},
+		"name":           "slim shady",
+		"foo":            "test",
+		"special_string": "I'm special!",
+		"special_float":  10,
+		"enum":           "a",
+		"bar":            4,
 		"baz": map[string]interface{}{
 			"baz": "baz",
 		},
@@ -125,6 +137,12 @@ func TestComplexCoerce(t *testing.T) {
 	bt := &ComplexTestStruct{}
 	if err := Coerce(bt, testMap); err != nil {
 		t.Fatal(err)
+	}
+	if bt.SpecialString.string != "I'm special!" {
+		t.Fatalf("special string does not match")
+	}
+	if bt.SpecialFloat.float64 != 10 {
+		t.Fatalf("special float not converted")
 	}
 	if bt.Enum != "a" {
 		t.Fatalf("enum doesn't match")

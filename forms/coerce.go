@@ -9,7 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // license for more details.
 //
-// You should have received a copy of the 3-Clause BSD License
+// You should have received a opy of the 3-Clause BSD License
 // along with this program.  If not, see <https://opensource.org/licenses/BSD-3-Clause>.
 
 package forms
@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unsafe"
 )
 
 type Tag struct {
@@ -70,6 +71,14 @@ func (c CoerceError) Error() string {
 	return fmt.Sprintf("%s (%s)", c.Message, strings.Join(pathComponents, "."))
 }
 
+func New(target interface{}) interface{} {
+	targetType := reflect.TypeOf(target)
+	if targetType.Kind() != reflect.Struct {
+		targetType = targetType.Elem()
+	}
+	return reflect.New(targetType).Interface()
+}
+
 func Coerce(target interface{}, source interface{}) error {
 	return coerce(target, source, make([]interface{}, 0), nil)
 }
@@ -80,26 +89,65 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 	targetValue := valueOf(target)
 	sourceValue := valueOf(source)
 
-	if targetType.AssignableTo(sourceType) {
-		// the source can be directly assigned to the target
-		targetValue.Set(sourceValue)
+	tryAssign := func(st, tt reflect.Type, sv, tv reflect.Value) bool {
+		if tt.AssignableTo(st) {
+			// the source can be directly assigned to the target
+			tv.Set(sv)
+			return true
+		}
+
+		if st.ConvertibleTo(tt) && tags != nil {
+
+			convert := false
+			for _, tag := range tags {
+				if tag.Flag && tag.Name == "convert" {
+					convert = true
+					break
+				}
+			}
+
+			// conversion needs to be specified explicitly, as it can lead to weird errors...
+			if convert {
+				tv.Set(sv.Convert(tt))
+				return true
+			}
+		}
+		return false
+	}
+
+	if tryAssign(sourceType, targetType, sourceValue, targetValue) {
 		return nil
 	}
 
-	if sourceType.ConvertibleTo(targetType) && tags != nil {
+	// if this is an embedded struct we try to assign to it
+	if targetType.Kind() == reflect.Struct && targetType.NumField() == 1 {
+		field := targetType.Field(0)
 
-		convert := false
-		for _, tag := range tags {
-			if tag.Flag && tag.Name == "convert" {
-				convert = true
-				break
+		assignableTo := field.Type.AssignableTo(sourceType)
+		convertibleTo := sourceType.ConvertibleTo(field.Type)
+
+		if assignableTo || convertibleTo {
+
+			if assignableTo {
+				newStructValue := reflect.NewAt(field.Type, unsafe.Pointer(targetValue.Field(0).UnsafeAddr()))
+				newStructValue.Elem().Set(sourceValue)
+				return nil
 			}
-		}
 
-		// conversion needs to be specified explicitly, as it can lead to weird errors...
-		if convert {
-			targetValue.Set(sourceValue.Convert(targetType))
-			return nil
+			convert := false
+			for _, tag := range tags {
+				if tag.Flag && tag.Name == "convert" {
+					convert = true
+					break
+				}
+			}
+
+			// conversion needs to be specified explicitly, as it can lead to weird errors...
+			if convert {
+				newStructValue := reflect.NewAt(field.Type, unsafe.Pointer(targetValue.Field(0).UnsafeAddr()))
+				newStructValue.Elem().Set(sourceValue.Convert(field.Type))
+				return nil
+			}
 		}
 	}
 

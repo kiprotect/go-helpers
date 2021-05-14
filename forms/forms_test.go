@@ -103,6 +103,54 @@ func TestWildcards(t *testing.T) {
 	testCases(t, form, invalidTestCases, false)
 
 }
+
+type AB struct {
+	A string
+	B int `coerce:"convert"`
+}
+
+func TestStringMapCoerce(t *testing.T) {
+
+	form := Form{
+		Fields: []Field{
+			Field{
+				Name: "map",
+				Validators: []Validator{
+					IsStringMap{
+						Coerce: AB{},
+						Form: &Form{
+							Fields: []Field{
+								Field{
+									Name: "a",
+									Validators: []Validator{
+										IsString{},
+									},
+								},
+								Field{
+									Name: "b",
+									Validators: []Validator{
+										IsInteger{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	validData := map[string]interface{}{
+		"map": map[string]interface{}{"a": "foo", "b": 10},
+	}
+
+	if params, err := form.Validate(validData); err != nil {
+		t.Fatal(err)
+	} else if _, ok := params["map"].(*AB); !ok {
+		t.Fatalf("expected an AB struct")
+	}
+
+}
+
 func TestIsStringMapWithSubform(t *testing.T) {
 	form := Form{
 		Fields: []Field{
@@ -110,6 +158,7 @@ func TestIsStringMapWithSubform(t *testing.T) {
 				Name: "map",
 				Validators: []Validator{
 					IsStringMap{
+						Coerce: &AB{},
 						Form: &Form{
 							Fields: []Field{
 								Field{

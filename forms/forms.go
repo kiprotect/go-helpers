@@ -487,7 +487,8 @@ func (f IsUUID) Validate(input interface{}, values map[string]interface{}) (inte
 }
 
 type IsStringMap struct {
-	Form *Form `json:"form"`
+	Form   *Form `json:"form"`
+	Coerce interface{}
 }
 
 type IsList struct {
@@ -644,9 +645,18 @@ func (f IsStringMap) validate(input interface{}, values map[string]interface{}, 
 		if params, err := f.Form.ValidateWithContext(sm, context); err != nil {
 			return nil, err
 		} else {
+			if f.Coerce != nil {
+				target := New(f.Coerce)
+				if err := Coerce(target, params); err != nil {
+					return nil, err
+				} else {
+					return target, err
+				}
+			}
 			return params, nil
 		}
 	}
+
 	return sm, nil
 }
 
