@@ -16,6 +16,7 @@ package settings
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/kiprotect/go-helpers/forms"
 	"github.com/kiprotect/go-helpers/maps"
@@ -212,7 +213,7 @@ func (self *Settings) getSettingsFiles(settingsPath string) []string {
 		if file.IsDir() {
 			continue
 		}
-		r, err := regexp.MatchString(".yml", file.Name())
+		r, err := regexp.MatchString("\\.(yml|json)$", file.Name())
 		if err == nil && r {
 			paths = append(paths, path.Join(settingsPath, file.Name()))
 		}
@@ -566,7 +567,16 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 					if newPath, err := getPath(filePath, include); err != nil {
 						return nil, err
 					} else {
-						if newValue, err := loadYaml(newPath, reader); err != nil {
+						var newValue interface{}
+						var err error
+						if strings.HasSuffix(newPath, ".yml") {
+							newValue, err = loadYaml(newPath, reader)
+						} else if strings.HasSuffix(newPath, ".json") {
+							newValue, err = loadJSON(newPath, reader)
+						} else {
+							return nil, fmt.Errorf("invalid file path: %s", newPath)
+						}
+						if err != nil {
 							return nil, err
 						} else if newMapValue, ok := newValue.(map[string]interface{}); !ok {
 							// if this is only a single include statement we
@@ -620,6 +630,10 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 
 func LoadYaml(filePath string) (interface{}, error) {
 	return loadYaml(filePath, ioutil.ReadFile)
+}
+
+func LoadJSON(filePath string) (interface{}, error) {
+	return loadJSON(filePath, ioutil.ReadFile)
 }
 
 var numberRegex = regexp.MustCompile(`^\d+$`)
@@ -708,18 +722,7 @@ func parseRefs(data interface{}, settings interface{}) (interface{}, error) {
 	return data, nil
 }
 
-func loadYaml(filePath string, reader Reader) (interface{}, error) {
-
-	fileContent, err := reader(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	var settings interface{}
-	yamlerror := yaml.Unmarshal(fileContent, &settings)
-	if yamlerror != nil {
-		return nil, yamlerror
-	}
+func verifySettings(settings interface{}, filePath string, reader Reader) (interface{}, error) {
 	deepStringObj, ok := maps.EnsureStringKeys(settings)
 	if !ok {
 		return nil, fmt.Errorf("Non-string keys encountered in file '%s'", filePath)
@@ -733,6 +736,38 @@ func loadYaml(filePath string, reader Reader) (interface{}, error) {
 	} else {
 		return withRefs, nil
 	}
+}
+
+func loadJSON(filePath string, reader Reader) (interface{}, error) {
+
+	fileContent, err := reader(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var settings interface{}
+	err = json.Unmarshal(fileContent, &settings)
+	if err != nil {
+		return nil, err
+	}
+
+	return verifySettings(settings, filePath, reader)
+}
+
+func loadYaml(filePath string, reader Reader) (interface{}, error) {
+
+	fileContent, err := reader(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var settings interface{}
+	err = yaml.Unmarshal(fileContent, &settings)
+	if err != nil {
+		return nil, err
+	}
+
+	return verifySettings(settings, filePath, reader)
 }
 
 func MakeSettings(settingsPaths []string) (*Settings, error) {
