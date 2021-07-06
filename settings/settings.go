@@ -183,6 +183,15 @@ func Merge(a map[string]interface{}, b map[string]interface{}) {
 			continue
 		}
 
+		if aValue == nil {
+			a[key] = value
+			continue
+		}
+
+		if value == nil {
+			continue
+		}
+
 		if v, ok := mergeMaps(aValue, value); ok {
 			a[key] = v
 			continue
@@ -237,11 +246,19 @@ func (self *Settings) Load(settingsPath string) error {
 	}
 	for _, settingsFile := range settingsFiles {
 		log.Debugf("Adding settings from %v...", settingsFile)
-		settings, err := LoadYaml(settingsFile)
+		var settings interface{}
+		var err error
+		if strings.HasSuffix(settingsFile, ".yml") {
+			settings, err = LoadYaml(settingsFile)
+		} else if strings.HasSuffix(settingsFile, ".json") {
+			settings, err = LoadJSON(settingsFile)
+		} else {
+			return fmt.Errorf("invalid file: %s", settingsFile)
+		}
 		if os.IsNotExist(err) {
 			continue
 		} else if err != nil {
-			return fmt.Errorf("load yaml %v: %v", settingsFile, err)
+			return fmt.Errorf("load settings %v: %v", settingsFile, err)
 		}
 		if mapSettings, ok := settings.(map[string]interface{}); !ok {
 			return fmt.Errorf("expected a map")
