@@ -193,85 +193,112 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 		// map values to struct fields we further assume that the map has only string
 		// keys, and we don't use reflection to iterate over map keys like we do
 		// for the slices above.
-		if targetType.Kind() != reflect.Struct {
-			return MakeCoerceError(fmt.Sprintf("expected a struct to coerce a map into, got '%s'", targetType.Kind()), path)
+		if targetType.Kind() != reflect.Struct && targetType.Kind() != reflect.Map {
+			return MakeCoerceError(fmt.Sprintf("expected a struct or a map to coerce a map into, got '%s'", targetType.Kind()), path)
 		}
 		sourceMap, ok := source.(map[string]interface{})
 		if !ok {
 			return MakeCoerceError(fmt.Sprintf("expected a string map"), path)
 		}
-		for i := 0; i < targetType.NumField(); i++ {
-			targetFieldType := targetType.Field(i)
-			targetFieldValue := targetValue.Field(i)
 
-			coerceTags := ExtractTags(targetFieldType, "coerce")
-			jsonTags := ExtractTags(targetFieldType, "json")
+		if targetType.Kind() == reflect.Struct {
+			for i := 0; i < targetType.NumField(); i++ {
+				targetFieldType := targetType.Field(i)
+				targetFieldValue := targetValue.Field(i)
 
-			var sourceName string
+				coerceTags := ExtractTags(targetFieldType, "coerce")
+				jsonTags := ExtractTags(targetFieldType, "json")
 
-			for _, tag := range coerceTags {
-				if !tag.Flag && tag.Name == "name" {
-					sourceName = tag.Value
-				}
-			}
-			if sourceName == "" {
-				if len(jsonTags) > 0 && jsonTags[0].Flag {
-					sourceName = jsonTags[0].Name
-				} else {
-					sourceName = ToSnakeCase(targetFieldType.Name)
-				}
-			}
+				var sourceName string
 
-			sourceData, ok := sourceMap[sourceName]
-			mapPath := append(path, sourceName)
-			if targetFieldType.Anonymous {
-				// this is an anonymous field
-				mapPath = append(path, fmt.Sprintf("%s(anonymous)", sourceName))
-				sourceData = sourceMap
-				ok = true
-			}
-			if !ok {
-				required := false
 				for _, tag := range coerceTags {
-					if tag.Flag && tag.Name == "required" {
-						required = true
+					if !tag.Flag && tag.Name == "name" {
+						sourceName = tag.Value
 					}
 				}
-				if required {
-					return MakeCoerceError(fmt.Sprintf("missing value for required key '%s'", sourceName), mapPath)
+				if sourceName == "" {
+					if len(jsonTags) > 0 && jsonTags[0].Flag {
+						sourceName = jsonTags[0].Name
+					} else {
+						sourceName = ToSnakeCase(targetFieldType.Name)
+					}
 				}
-				continue
-			}
-			sourceValue = valueOf(sourceData)
-			sourceValueType := typeOf(sourceData)
-			if !targetFieldValue.CanSet() {
-				return MakeCoerceError(fmt.Sprintf("struct value '%s' of type '%s' is not assignable", targetFieldType.Name, targetFieldType.Type), mapPath)
-			}
-			// if the target value is not assignable to the source value, it is probably a
-			// struct itself that the source value should be coerced into
-			if !targetFieldType.Type.AssignableTo(sourceValueType) {
-				var targetFieldValuePtr reflect.Value
-				if targetFieldValue.Type().Kind() == reflect.Ptr {
+
+				sourceData, ok := sourceMap[sourceName]
+				mapPath := append(path, sourceName)
+				if targetFieldType.Anonymous {
+					// this is an anonymous field
+					mapPath = append(path, fmt.Sprintf("%s(anonymous)", sourceName))
+					sourceData = sourceMap
+					ok = true
+				}
+				if !ok {
+					required := false
+					for _, tag := range coerceTags {
+						if tag.Flag && tag.Name == "required" {
+							required = true
+						}
+					}
+					if required {
+						return MakeCoerceError(fmt.Sprintf("missing value for required key '%s'", sourceName), mapPath)
+					}
+					continue
+				}
+				sourceValue = valueOf(sourceData)
+				sourceValueType := typeOf(sourceData)
+				if !targetFieldValue.CanSet() {
+					return MakeCoerceError(fmt.Sprintf("struct value '%s' of type '%s' is not assignable", targetFieldType.Name, targetFieldType.Type), mapPath)
+				}
+				// if the target value is not assignable to the source value, it is probably a
+				// struct itself that the source value should be coerced into
+				if !targetFieldType.Type.AssignableTo(sourceValueType) {
+					var targetFieldValuePtr reflect.Value
+
 					if targetFieldValue.IsZero() {
-						// this pointer is uninitialized, we have to initialize it first
-						newFieldValue := reflect.New(targetFieldValue.Type().Elem())
-						targetFieldValue.Set(newFieldValue)
+						switch targetFieldValue.Type().Kind() {
+						case reflect.Ptr:
+							// this pointer is uninitialized, we have to initialize it first
+							targetFieldValue.Set(reflect.New(targetFieldValue.Type().Elem()))
+						case reflect.Map:
+							targetFieldValue.Set(reflect.MakeMap(targetFieldValue.Type()))
+						case reflect.Slice:
+							targetFieldValue.Set(reflect.MakeSlice(targetFieldValue.Type(), 0, 0))
+						}
 					}
-					targetFieldValuePtr = targetFieldValue
-				} else {
-					targetFieldValuePtr = targetFieldValue.Addr()
-				}
-				// we first check if we can generate interface values for both source and target
-				if targetFieldValuePtr.CanInterface() && sourceValue.CanInterface() {
-					// we then try to coerce the source interface value into the target interface value
-					if err := coerce(targetFieldValuePtr.Interface(), sourceValue.Interface(), mapPath, coerceTags); err != nil {
-						return err
+
+					if targetFieldValue.Type().Kind() == reflect.Ptr {
+						targetFieldValuePtr = targetFieldValue
+					} else {
+						targetFieldValuePtr = targetFieldValue.Addr()
+					}
+					// we first check if we can generate interface values for both source and target
+					if targetFieldValuePtr.CanInterface() && sourceValue.CanInterface() {
+						// we then try to coerce the source interface value into the target interface value
+						if err := coerce(targetFieldValuePtr.Interface(), sourceValue.Interface(), mapPath, coerceTags); err != nil {
+							return err
+						}
+					} else {
+						return MakeCoerceError(fmt.Sprintf("cannot assign map value '%s' to struct field '%s'", sourceName, targetFieldType.Name), mapPath)
 					}
 				} else {
-					return MakeCoerceError(fmt.Sprintf("cannot assign map value '%s' to struct field '%s'", sourceName, targetFieldType.Name), mapPath)
+					targetFieldValue.Set(sourceValue)
 				}
-			} else {
-				targetFieldValue.Set(sourceValue)
+			}
+		} else {
+			// this is a map
+			if targetType.Key().Kind() != reflect.String {
+				return MakeCoerceError(fmt.Sprintf("expected a string map, got '%s'", targetType.Key().Kind()), path)
+			}
+			for k, v := range sourceMap {
+				kv := valueOf(k)
+				// we create a new target type
+				tv := reflect.New(targetType.Elem())
+				// we try to assign the source value to the target
+				if err := coerce(tv.Interface(), v, append(path, k), nil); err != nil {
+					return err
+				}
+				// we assign the map value to the unpointed value
+				targetValue.SetMapIndex(kv, unpointValue(tv))
 			}
 		}
 		break
