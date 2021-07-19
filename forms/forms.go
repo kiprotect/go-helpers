@@ -15,16 +15,11 @@
 package forms
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/kiprotect/go-helpers/errors"
 	"reflect"
 	"strings"
 )
-
-type Serializable interface {
-	Serialize(context map[string]interface{}) interface{}
-}
 
 type Validator interface {
 	Validate(input interface{}, values map[string]interface{}) (interface{}, error)
@@ -45,37 +40,22 @@ func getType(myvar interface{}) string {
 	}
 }
 
-type SerializedValidator struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
-}
-
-func (f Field) MarshalJSON() ([]byte, error) {
-	return json.Marshal(f.Serialize(map[string]interface{}{}))
-}
-
-func (f Field) Serialize(context map[string]interface{}) interface{} {
-
-	validators := make([]SerializedValidator, 0)
-
-	for _, validator := range f.Validators {
-		var data interface{}
-		if serializableValidator, ok := validator.(Serializable); ok {
-			data = serializableValidator.Serialize(context)
-		} else {
-			// we include the raw validator
-			data = validator
+func (f *Field) Serialize() error {
+	descriptions := []*ValidatorDescription{}
+	for i, validator := range f.Validators {
+		validatorType := reflect.TypeOf(validator)
+		params := map[string]interface{}{}
+		if err := Coerce(params, validator); err != nil {
+			return fmt.Errorf("error serializing validator %d of field %s: %v", i, f.Name, err)
 		}
-		validators = append(validators, SerializedValidator{
-			Type: ToSnakeCase(getType(validator)),
-			Data: data,
-		})
+		description := &ValidatorDescription{
+			Type:   validatorType.Name(),
+			Params: params,
+		}
+		descriptions = append(descriptions, description)
 	}
-
-	return map[string]interface{}{
-		"name":       f.Name,
-		"validators": validators,
-	}
+	f.ValidatorDescriptions = descriptions
+	return nil
 }
 
 type Field struct {
@@ -186,14 +166,13 @@ func (f *Form) ErrorMessage() string {
 	return errorMessage
 }
 
-func (f *Form) Serialize(context map[string]interface{}) interface{} {
-	fields := make([]interface{}, len(f.Fields))
-	for i, field := range f.Fields {
-		fields[i] = field.Serialize(context)
+func (f *Form) Serialize() error {
+	for _, field := range f.Fields {
+		if err := field.Serialize(); err != nil {
+			return err
+		}
 	}
-	return map[string]interface{}{
-		"fields": fields,
-	}
+	return nil
 }
 
 func (f *Form) ValidateWithContext(inputs map[string]interface{}, context map[string]interface{}) (values map[string]interface{}, validationError error) {

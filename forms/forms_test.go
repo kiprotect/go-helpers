@@ -32,10 +32,16 @@ func testCases(t *testing.T, form Form, testCases []map[string]interface{}, vali
 
 func TestMarshalField(t *testing.T) {
 	f := Field{
+		Name: "test",
 		Validators: []Validator{
 			IsOptional{},
 		},
 	}
+
+	if err := f.Serialize(); err != nil {
+		t.Fatal(err)
+	}
+
 	m, err := json.Marshal(f)
 
 	if err != nil {
@@ -64,8 +70,8 @@ func TestMarshalField(t *testing.T) {
 		t.Fatalf("type is missing")
 	} else if vStr, ok := v.(string); !ok {
 		t.Fatalf("type is not a string")
-	} else if vStr != "is_optional" {
-		t.Fatalf("expected is_optional")
+	} else if vStr != "IsOptional" {
+		t.Fatalf("expected IsOptional")
 	}
 
 }

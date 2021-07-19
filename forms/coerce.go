@@ -188,6 +188,60 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 			}
 		}
 		targetValue.Set(targetSliceValue)
+	case reflect.Struct:
+		if targetType.Kind() != reflect.Map {
+			return MakeCoerceError(fmt.Sprintf("expected a map to coerce a struct into, got '%s'", targetType.Kind()), path)
+		}
+		for i := 0; i < sourceType.NumField(); i++ {
+			sourceFieldType := sourceType.Field(i)
+			sourceFieldValue := sourceValue.Field(i)
+
+			coerceTags := ExtractTags(sourceFieldType, "coerce")
+			jsonTags := ExtractTags(sourceFieldType, "json")
+
+			targetMap, ok := target.(map[string]interface{})
+			if !ok {
+				return MakeCoerceError(fmt.Sprintf("expected a string map"), path)
+			}
+
+			var targetName string
+
+			for _, tag := range coerceTags {
+				if !tag.Flag && tag.Name == "name" {
+					targetName = tag.Value
+				}
+			}
+			if targetName == "" {
+				if len(jsonTags) > 0 && jsonTags[0].Flag {
+					if jsonTags[0].Name == "-" {
+						continue // this field should not be serialized
+					}
+					targetName = jsonTags[0].Name
+				} else {
+					targetName = ToSnakeCase(sourceFieldType.Name)
+				}
+			}
+
+			sourceMapValue := sourceFieldValue.Interface()
+
+			switch sourceFieldValue.Type().Kind() {
+			case reflect.Map:
+				newMap := map[string]interface{}{}
+				if err := coerce(newMap, sourceMapValue, append(path, sourceFieldType.Name), coerceTags); err != nil {
+					return err
+				}
+				sourceMapValue = newMap
+			case reflect.Slice:
+				newSlice := []interface{}{}
+				if err := coerce(newSlice, sourceMapValue, append(path, sourceFieldType.Name), coerceTags); err != nil {
+					return err
+				}
+				sourceMapValue = newSlice
+			}
+
+			targetMap[targetName] = sourceMapValue
+
+		}
 	case reflect.Map:
 		// this is a map, so we expect the source to be a map too. Since we assign
 		// map values to struct fields we further assume that the map has only string
