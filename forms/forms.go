@@ -102,6 +102,7 @@ func makeErrorMessage(baseMessage string, data map[string]interface{}) string {
 }
 
 type Form struct {
+	Strict                  bool                      `json:"strict"`
 	SanitizeKeys            bool                      `json:"sanitizeKeys"`
 	Validator               FormValidator             `json:"-"`
 	ValidatorDescription    *FormValidatorDescription `json:"validator"`
@@ -280,6 +281,15 @@ func (f *Form) validate(inputs map[string]interface{}, update bool, context map[
 
 	if len(errors) > 0 || hasError {
 		validationError = f.makeError(errorMessage, errors)
+	}
+
+	if f.Strict {
+		for k, _ := range inputs {
+			if _, ok := values[k]; !ok {
+				validationError = f.makeError(fmt.Sprintf("extraneous input field: %s", k), nil)
+				return
+			}
+		}
 	}
 
 	return

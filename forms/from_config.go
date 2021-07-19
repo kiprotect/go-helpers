@@ -64,6 +64,13 @@ var PreprocessorDescriptionForm = Form{}
 var FormForm = Form{
 	Fields: []Field{
 		{
+			Name: "strict",
+			Validators: []Validator{
+				IsOptional{Default: false},
+				IsBoolean{},
+			},
+		},
+		{
 			Name: "sanitizeKeys",
 			Validators: []Validator{
 				IsOptional{Default: false},
