@@ -4,14 +4,14 @@ import (
 	"fmt"
 )
 
-type IsValidParams struct {
+type IsValidConfig struct {
 }
 
-func (i IsValidParams) ValidateWithContext(input interface{}, values map[string]interface{}, context map[string]interface{}) (interface{}, error) {
+func (i IsValidConfig) ValidateWithContext(input interface{}, values map[string]interface{}, context map[string]interface{}) (interface{}, error) {
 	return input, nil
 }
 
-func (i IsValidParams) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
+func (i IsValidConfig) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
 	return input, nil
 }
 
@@ -24,11 +24,11 @@ var ValidatorDescriptionForm = Form{
 			},
 		},
 		{
-			Name: "params",
+			Name: "config",
 			Validators: []Validator{
 				IsOptional{},
 				IsStringMap{},
-				IsValidParams{},
+				IsValidConfig{},
 			},
 		},
 	},
@@ -121,12 +121,12 @@ type ValidatorMaker func(map[string]interface{}, *FormDescriptionContext) (Valid
 
 type ValidatorDescription struct {
 	Type   string                 `json:"type"`
-	Params map[string]interface{} `json:"params"`
+	Config map[string]interface{} `json:"config"`
 }
 
 type FormValidatorDescription struct {
 	Type   string                 `json:"type"`
-	Params map[string]interface{} `json:"params"`
+	Config map[string]interface{} `json:"config"`
 }
 
 type PreprocessorDescription struct {
@@ -141,7 +141,7 @@ func ValidatorFromDescription(config *ValidatorDescription, context *FormDescrip
 	if maker, ok := context.Validators[config.Type]; !ok {
 		return nil, fmt.Errorf("unknown validator type: '%s'", config.Type)
 	} else {
-		return maker(config.Params, context)
+		return maker(config.Config, context)
 	}
 }
 

@@ -44,13 +44,13 @@ func (f *Field) Serialize() error {
 	descriptions := []*ValidatorDescription{}
 	for i, validator := range f.Validators {
 		validatorType := reflect.TypeOf(validator)
-		params := map[string]interface{}{}
-		if err := Coerce(params, validator); err != nil {
+		config := map[string]interface{}{}
+		if err := Coerce(config, validator); err != nil {
 			return fmt.Errorf("error serializing validator %d of field %s: %v", i, f.Name, err)
 		}
 		description := &ValidatorDescription{
 			Type:   validatorType.Name(),
-			Params: params,
+			Config: config,
 		}
 		descriptions = append(descriptions, description)
 	}

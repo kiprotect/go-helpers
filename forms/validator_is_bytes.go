@@ -44,8 +44,8 @@ func MakeIsBytesValidator(config map[string]interface{}, context *FormDescriptio
 
 type IsBytes struct {
 	Encoding  string `json:"encoding"`
-	MinLength int    `json:"min_length"`
-	MaxLength int    `json:"max_length"`
+	MinLength int    `json:"min_length" coerce:"convert"`
+	MaxLength int    `json:"max_length" coerce:"convert"`
 }
 
 func (f IsBytes) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {

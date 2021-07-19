@@ -20,7 +20,7 @@ func TestSwitchFromConfig(t *testing.T) {
 				"validators": []map[string]interface{}{
 					{
 						"type": "Switch",
-						"params": map[string]interface{}{
+						"config": map[string]interface{}{
 							"key": "type",
 							"cases": map[string]interface{}{
 								"string": []map[string]interface{}{

@@ -57,8 +57,8 @@ func MakeIsIntegerValidator(config map[string]interface{}, context *FormDescript
 
 type IsInteger struct {
 	Convert bool  `json:"convert"`
-	Min     int64 `json:"min"`
-	Max     int64 `json:"max"`
+	Min     int64 `json:"min" coerce:"convert"`
+	Max     int64 `json:"max" coerce:"convert"`
 	HasMin  bool  `json:"has_min"`
 	HasMax  bool  `json:"has_max"`
 }

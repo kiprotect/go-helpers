@@ -12,7 +12,7 @@ func TestIsStringMapFromConfig(t *testing.T) {
 				"validators": []map[string]interface{}{
 					{
 						"type": "IsStringMap",
-						"params": map[string]interface{}{
+						"config": map[string]interface{}{
 							"form": map[string]interface{}{
 								"fields": []map[string]interface{}{
 									{

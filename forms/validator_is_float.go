@@ -57,8 +57,8 @@ func MakeIsFloatValidator(config map[string]interface{}, context *FormDescriptio
 
 type IsFloat struct {
 	Convert bool    `json:"convert"`
-	Min     float64 `json:"min"`
-	Max     float64 `json:"max"`
+	Min     float64 `json:"min" coerce:"convert"`
+	Max     float64 `json:"max" coerce:"convert"`
 	HasMin  bool    `json:"has_min"`
 	HasMax  bool    `json:"has_max"`
 }
