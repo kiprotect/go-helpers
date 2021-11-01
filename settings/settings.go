@@ -24,6 +24,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path"
@@ -212,9 +213,9 @@ func Merge(a map[string]interface{}, b map[string]interface{}) {
 	}
 }
 
-func (self *Settings) getSettingsFiles(settingsPath string) []string {
+func (self *Settings) getSettingsFiles(settingsPath string, fS fs.FS) []string {
 	paths := make([]string, 0)
-	files, err := ioutil.ReadDir(settingsPath)
+	files, err := fs.ReadDir(fS, settingsPath)
 	if err != nil {
 		return paths
 	}
@@ -230,14 +231,18 @@ func (self *Settings) getSettingsFiles(settingsPath string) []string {
 	return paths
 }
 
-func (self *Settings) Load(settingsPath string) error {
-	fi, err := os.Stat(settingsPath)
+func (self *Settings) Load(settingsPath string, fS fs.FS) error {
+	file, err := fS.Open(settingsPath)
+	if err != nil {
+		return err
+	}
+	fi, err := file.Stat()
 	if err != nil {
 		return err
 	}
 	var settingsFiles []string
 	if fi.Mode().IsDir() {
-		settingsFiles = self.getSettingsFiles(settingsPath)
+		settingsFiles = self.getSettingsFiles(settingsPath, fS)
 	} else {
 		settingsFiles = []string{settingsPath}
 	}
@@ -249,13 +254,13 @@ func (self *Settings) Load(settingsPath string) error {
 		var settings interface{}
 		var err error
 		if strings.HasSuffix(settingsFile, ".yml") {
-			settings, err = LoadYaml(settingsFile)
+			settings, err = LoadYaml(settingsFile, fS)
 		} else if strings.HasSuffix(settingsFile, ".json") {
-			settings, err = LoadJSON(settingsFile)
+			settings, err = LoadJSON(settingsFile, fS)
 		} else {
 			return fmt.Errorf("invalid file: %s", settingsFile)
 		}
-		if os.IsNotExist(err) {
+		if err == fs.ErrNotExist {
 			continue
 		} else if err != nil {
 			return fmt.Errorf("load settings %v: %v", settingsFile, err)
@@ -645,12 +650,24 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 
 }
 
-func LoadYaml(filePath string) (interface{}, error) {
-	return loadYaml(filePath, ioutil.ReadFile)
+func fsReader(fS fs.FS) func(path string) ([]byte, error) {
+	return func(path string) ([]byte, error) {
+		if file, err := fS.Open(path); err != nil {
+			return nil, err
+		} else if bytes, err := ioutil.ReadAll(file); err != nil {
+			return nil, err
+		} else {
+			return bytes, nil
+		}
+	}
 }
 
-func LoadJSON(filePath string) (interface{}, error) {
-	return loadJSON(filePath, ioutil.ReadFile)
+func LoadYaml(filePath string, fS fs.FS) (interface{}, error) {
+	return loadYaml(filePath, fsReader(fS))
+}
+
+func LoadJSON(filePath string, fS fs.FS) (interface{}, error) {
+	return loadJSON(filePath, fsReader(fS))
 }
 
 var numberRegex = regexp.MustCompile(`^\d+$`)
@@ -787,10 +804,10 @@ func loadYaml(filePath string, reader Reader) (interface{}, error) {
 	return verifySettings(settings, filePath, reader)
 }
 
-func MakeSettings(settingsPaths []string) (*Settings, error) {
+func MakeSettings(settingsPaths []string, fS fs.FS) (*Settings, error) {
 	settings := new(Settings)
 	for _, path := range settingsPaths {
-		err := settings.Load(path)
+		err := settings.Load(path, fS)
 		if err != nil {
 			return nil, fmt.Errorf("Error loading settings from path '%s': %s", path, err.Error())
 		}
