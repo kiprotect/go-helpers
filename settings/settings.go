@@ -535,7 +535,7 @@ func getPath(basePath, filePath string) (string, error) {
 		return "", fmt.Errorf("absolute paths are not allowed for security reasons")
 	}
 	dir := filepath.Dir(basePath)
-	return filepath.Join(dir, filePath), nil
+	return filepath.ToSlash(filepath.Join(dir, filePath)), nil
 }
 
 type Reader func(string) ([]byte, error)
