@@ -41,15 +41,16 @@ func getType(myvar interface{}) string {
 	}
 }
 
-func (f Field) MarshalJSON() ([]byte, error) {
+func (f *Field) MarshalJSON() ([]byte, error) {
 	if f.ValidatorDescriptions == nil {
 		if err := f.Serialize(); err != nil {
 			return nil, err
 		}
 	}
 	return json.Marshal(map[string]interface{}{
-		"name":       f.Name,
-		"validators": f.ValidatorDescriptions,
+		"name":        f.Name,
+		"description": f.Description,
+		"validators":  f.ValidatorDescriptions,
 	})
 }
 
@@ -59,7 +60,7 @@ func (f *Field) Serialize() error {
 		validatorType := reflect.TypeOf(validator)
 		config := map[string]interface{}{}
 		if err := Coerce(config, validator); err != nil {
-			return fmt.Errorf("error serializing validator %d of field %s: %v", i, f.Name, err)
+			return fmt.Errorf("error serializing validator %d of field %s: %v", i+1, f.Name, err)
 		}
 		description := &ValidatorDescription{
 			Type:   validatorType.Name(),
@@ -75,6 +76,7 @@ type Field struct {
 	Validators            []Validator             `json:"-"`
 	ValidatorDescriptions []*ValidatorDescription `json:"validators"`
 	Name                  string                  `json:"name"`
+	Description           string                  `json:"description"`
 }
 
 type Transform struct {
@@ -124,6 +126,7 @@ type Form struct {
 	Preprocessor            Preprocessor              `json:"-"`
 	PreprocessorDescription *PreprocessorDescription  `json:"preprocessor"`
 	ErrorMsg                string                    `json:"errorMsg"`
+	Description             string                    `json:"description"`
 }
 
 // this is just a convenience function to avoid importing the "forms" module

@@ -84,12 +84,18 @@ func Coerce(target interface{}, source interface{}) error {
 }
 
 func coerce(target interface{}, source interface{}, path []interface{}, tags []Tag) error {
+
 	targetType := typeOf(target)
 	sourceType := typeOf(source)
 	targetValue := valueOf(target)
 	sourceValue := valueOf(source)
 
 	tryAssign := func(st, tt reflect.Type, sv, tv reflect.Value) bool {
+
+		if !tv.CanSet() {
+			return false
+		}
+
 		if tt.AssignableTo(st) {
 			// the source can be directly assigned to the target
 			tv.Set(sv)
@@ -187,6 +193,10 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 				targetSliceValue = reflect.Append(targetSliceValue, unpointValue(targetValue))
 			}
 		}
+		if !targetValue.CanSet() {
+			// we create a new slice value that is settable
+			targetValue = reflect.NewAt(targetType, unsafe.Pointer(targetValue.Pointer())).Elem()
+		}
 		targetValue.Set(targetSliceValue)
 	case reflect.Struct:
 		if targetType.Kind() != reflect.Map {
@@ -198,7 +208,6 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 
 			coerceTags := ExtractTags(sourceFieldType, "coerce")
 			jsonTags := ExtractTags(sourceFieldType, "json")
-
 			targetMap, ok := target.(map[string]interface{})
 			if !ok {
 				return MakeCoerceError(fmt.Sprintf("expected a string map"), path)
@@ -211,6 +220,7 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 					targetName = tag.Value
 				}
 			}
+
 			if targetName == "" {
 				if len(jsonTags) > 0 && jsonTags[0].Flag {
 					if jsonTags[0].Name == "-" {
@@ -223,7 +233,6 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 			}
 
 			sourceMapValue := sourceFieldValue.Interface()
-
 			switch sourceFieldValue.Type().Kind() {
 			case reflect.Map:
 				newMap := map[string]interface{}{}
@@ -238,7 +247,6 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 				}
 				sourceMapValue = newSlice
 			}
-
 			targetMap[targetName] = sourceMapValue
 
 		}
