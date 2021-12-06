@@ -253,8 +253,8 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 			case reflect.Slice:
 				newSlice := []interface{}{}
 				for j := 0; j < sourceFieldValue.Len(); j++ {
-					newValue := reflect.New(sourceFieldValue.Index(i).Type()).Interface()
-					if err := coerce(newValue, sourceFieldValue.Index(i).Interface(), append(path, sourceFieldType.Name), coerceTags); err != nil {
+					newValue := reflect.New(sourceFieldValue.Index(j).Type()).Interface()
+					if err := coerce(newValue, sourceFieldValue.Index(j).Interface(), append(path, sourceFieldType.Name), coerceTags); err != nil {
 						return err
 					}
 					newSlice = append(newSlice, newValue)
