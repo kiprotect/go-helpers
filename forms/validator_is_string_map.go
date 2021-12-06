@@ -36,7 +36,7 @@ func MakeIsStringMapValidator(config map[string]interface{}, context *FormDescri
 
 type IsStringMap struct {
 	Form   *Form `json:"form"`
-	Coerce interface{}
+	Coerce interface{} `json:"-"`
 }
 
 func (f IsStringMap) ValidateWithContext(input interface{}, values map[string]interface{}, context map[string]interface{}) (interface{}, error) {
