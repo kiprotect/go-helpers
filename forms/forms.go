@@ -15,6 +15,7 @@
 package forms
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/kiprotect/go-helpers/errors"
 	"reflect"
@@ -38,6 +39,18 @@ func getType(myvar interface{}) string {
 	} else {
 		return t.Name()
 	}
+}
+
+func (f Field) MarshalJSON() ([]byte, error) {
+	if f.ValidatorDescriptions == nil {
+		if err := f.Serialize(); err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(map[string]interface{}{
+		"name":       f.Name,
+		"validators": f.ValidatorDescriptions,
+	})
 }
 
 func (f *Field) Serialize() error {
