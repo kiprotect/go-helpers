@@ -16,6 +16,7 @@ package forms
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ func TestMarshalField(t *testing.T) {
 		},
 	}
 
-	if err := f.Serialize(); err != nil {
+	if _, err := f.Serialize(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -53,6 +54,8 @@ func TestMarshalField(t *testing.T) {
 	if err := json.Unmarshal(m, &d); err != nil {
 		t.Fatal(err)
 	}
+
+	fmt.Println(d)
 
 	validators, ok := d["validators"].([]interface{})
 

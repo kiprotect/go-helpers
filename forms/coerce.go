@@ -98,6 +98,7 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 
 		if tt.AssignableTo(st) {
 			// the source can be directly assigned to the target
+
 			tv.Set(sv)
 			return true
 		}
@@ -114,6 +115,7 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 
 			// conversion needs to be specified explicitly, as it can lead to weird errors...
 			if convert {
+
 				tv.Set(sv.Convert(tt))
 				return true
 			}
@@ -135,6 +137,10 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 		if assignableTo || convertibleTo {
 
 			if assignableTo {
+				if targetValue.Field(0).Addr().IsZero() {
+					return MakeCoerceError(fmt.Sprintf("expected an array to coerce an array into"), path)
+				}
+				// we create a new value at the given address, having checked that it is not 0
 				newStructValue := reflect.NewAt(field.Type, unsafe.Pointer(targetValue.Field(0).UnsafeAddr()))
 				newStructValue.Elem().Set(sourceValue)
 				return nil
@@ -150,6 +156,10 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 
 			// conversion needs to be specified explicitly, as it can lead to weird errors...
 			if convert {
+				if targetValue.Field(0).Addr().IsZero() {
+					return MakeCoerceError(fmt.Sprintf("expected an array to coerce an array into"), path)
+				}
+				// we create a new value at the given address, having checked that it is not 0
 				newStructValue := reflect.NewAt(field.Type, unsafe.Pointer(targetValue.Field(0).UnsafeAddr()))
 				newStructValue.Elem().Set(sourceValue.Convert(field.Type))
 				return nil
@@ -194,9 +204,9 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 			}
 		}
 		if !targetValue.CanSet() {
-			// we create a new slice value that is settable
-			targetValue = reflect.NewAt(targetType, unsafe.Pointer(targetValue.Pointer())).Elem()
+			return MakeCoerceError(fmt.Sprintf("cannot set '%s' ", targetType.Kind()), path)
 		}
+
 		targetValue.Set(targetSliceValue)
 	case reflect.Struct:
 		if targetType.Kind() != reflect.Map {
@@ -242,8 +252,12 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 				sourceMapValue = newMap
 			case reflect.Slice:
 				newSlice := []interface{}{}
-				if err := coerce(newSlice, sourceMapValue, append(path, sourceFieldType.Name), coerceTags); err != nil {
-					return err
+				for j := 0; j < sourceFieldValue.Len(); j++ {
+					newValue := reflect.New(sourceFieldValue.Index(i).Type()).Interface()
+					if err := coerce(newValue, sourceFieldValue.Index(i).Interface(), append(path, sourceFieldType.Name), coerceTags); err != nil {
+						return err
+					}
+					newSlice = append(newSlice, newValue)
 				}
 				sourceMapValue = newSlice
 			}
@@ -251,7 +265,7 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 
 		}
 	case reflect.Map:
-		// this is a map, so we expect the source to be a map too. Since we assign
+		// this is a map, so we expect the source to be a map or a struct. Since we assign
 		// map values to struct fields we further assume that the map has only string
 		// keys, and we don't use reflection to iterate over map keys like we do
 		// for the slices above.
@@ -264,6 +278,11 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 		}
 
 		if targetType.Kind() == reflect.Struct {
+
+			if !targetValue.IsValid() {
+				return MakeCoerceError(fmt.Sprintf("target value is uninitialized"), path)
+			}
+
 			for i := 0; i < targetType.NumField(); i++ {
 				targetFieldType := targetType.Field(i)
 				targetFieldValue := targetValue.Field(i)
@@ -355,6 +374,7 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 				kv := valueOf(k)
 				// we create a new target type
 				tv := reflect.New(targetType.Elem())
+
 				// we try to assign the source value to the target
 				if err := coerce(tv.Interface(), v, append(path, k), nil); err != nil {
 					return err

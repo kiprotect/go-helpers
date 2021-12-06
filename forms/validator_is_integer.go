@@ -59,8 +59,8 @@ type IsInteger struct {
 	Convert bool  `json:"convert"`
 	Min     int64 `json:"min" coerce:"convert"`
 	Max     int64 `json:"max" coerce:"convert"`
-	HasMin  bool  `json:"has_min"`
-	HasMax  bool  `json:"has_max"`
+	HasMin  bool  `json:"hasMin"`
+	HasMax  bool  `json:"hasMax"`
 }
 
 func (f IsInteger) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {

@@ -50,10 +50,10 @@ func MakeIsHexValidator(config map[string]interface{}, context *FormDescriptionC
 }
 
 type IsHex struct {
-	ConvertToBinary bool `json:"convert_to_binary"`
+	ConvertToBinary bool `json:"convertToBinary"`
 	Strict          bool `json:"strict"`
-	MinLength       int  `json:"min_length" coerce:"convert"`
-	MaxLength       int  `json:"max_length" coerce:"convert"`
+	MinLength       int  `json:"minLength" coerce:"convert"`
+	MaxLength       int  `json:"maxLength" coerce:"convert"`
 }
 
 func (f IsHex) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {

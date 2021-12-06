@@ -25,6 +25,20 @@ var OrForm = Form{
 	},
 }
 
+func (f *Or) Serialize() (map[string]interface{}, error) {
+	optionDescriptions := make([][]*ValidatorDescription, len(f.Options))
+	for i, option := range f.Options {
+		if descriptions, err := SerializeValidators(option); err != nil {
+			return nil, err
+		} else {
+			optionDescriptions[i] = descriptions
+		}
+	}
+	return map[string]interface{}{
+		"options": optionDescriptions,
+	}, nil
+}
+
 func MakeOrValidator(config map[string]interface{}, context *FormDescriptionContext) (Validator, error) {
 	or := &Or{}
 	if params, err := OrForm.Validate(config); err != nil {
@@ -33,7 +47,7 @@ func MakeOrValidator(config map[string]interface{}, context *FormDescriptionCont
 		return nil, err
 	} else {
 		options := [][]Validator{}
-		for _, optionDescription := range or.OptionDescriptions {
+		for _, optionDescription := range or.OptionsDescriptions {
 			validators := []Validator{}
 			for _, validatorDescription := range optionDescription {
 				if validator, err := ValidatorFromDescription(validatorDescription, context); err != nil {
@@ -50,8 +64,8 @@ func MakeOrValidator(config map[string]interface{}, context *FormDescriptionCont
 }
 
 type Or struct {
-	Options            [][]Validator             `json:"-"`
-	OptionDescriptions [][]*ValidatorDescription `json:"options"`
+	OptionsDescriptions [][]*ValidatorDescription `json:"options"`
+	Options             [][]Validator             `json:"-"`
 }
 
 func (f Or) Validate(input interface{}, inputs map[string]interface{}) (interface{}, error) {

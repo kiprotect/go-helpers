@@ -26,13 +26,14 @@ const (
 )
 
 type BasicTestStruct struct {
-	Foo        string
-	Bar        int
-	Bool       bool
-	StringList []string
-	IntList    []int
-	Map        map[string]interface{}
-	Interface  interface{}
+	Foo           string
+	Bar           int
+	Bool          bool
+	StringList    []string
+	IntList       []int
+	Interfacelist []interface{}
+	Map           map[string]interface{}
+	Interface     interface{}
 }
 
 type EmbeddedStruct struct {
@@ -49,7 +50,7 @@ type SpecialString struct {
 }
 
 type ComplexTestStruct struct {
-	EmbeddedStruct
+	*EmbeddedStruct
 	Enum          EnumType `coerce:"convert"`
 	Foo           string
 	SpecialString SpecialString
@@ -71,12 +72,13 @@ type Zap struct {
 
 func TestBasicCoerce(t *testing.T) {
 	testMap := map[string]interface{}{
-		"foo":         "test",
-		"bar":         4,
-		"bool":        true,
-		"string_list": []string{"a", "b", "c"},
-		"map":         map[string]interface{}{"test": "test"},
-		"interface":   "foo",
+		"foo":            "test",
+		"bar":            4,
+		"bool":           true,
+		"string_list":    []string{"a", "b", "c"},
+		"interface_list": []interface{}{"c", "d", "e"},
+		"map":            map[string]interface{}{"test": "test"},
+		"interface":      "foo",
 	}
 	bt := &BasicTestStruct{}
 	if err := Coerce(bt, testMap); err != nil {

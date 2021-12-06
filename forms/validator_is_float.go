@@ -59,8 +59,8 @@ type IsFloat struct {
 	Convert bool    `json:"convert"`
 	Min     float64 `json:"min" coerce:"convert"`
 	Max     float64 `json:"max" coerce:"convert"`
-	HasMin  bool    `json:"has_min"`
-	HasMax  bool    `json:"has_max"`
+	HasMin  bool    `json:"hasMin"`
+	HasMax  bool    `json:"hasMax"`
 }
 
 func (f IsFloat) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {

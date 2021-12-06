@@ -41,40 +41,65 @@ func getType(myvar interface{}) string {
 	}
 }
 
-func (f *Field) MarshalJSON() ([]byte, error) {
-	if f.ValidatorDescriptions == nil {
-		if err := f.Serialize(); err != nil {
-			return nil, err
-		}
+func (f Field) MarshalJSON() ([]byte, error) {
+	if serializedField, err := f.Serialize(); err != nil {
+		return nil, err
+	} else {
+		return json.Marshal(serializedField)
 	}
-	return json.Marshal(map[string]interface{}{
-		"name":        f.Name,
-		"description": f.Description,
-		"validators":  f.ValidatorDescriptions,
-	})
 }
 
-func (f *Field) Serialize() error {
+type Serializable interface {
+	Serialize() (map[string]interface{}, error)
+}
+
+func SerializeValidators(validators []Validator) ([]*ValidatorDescription, error) {
 	descriptions := []*ValidatorDescription{}
-	for i, validator := range f.Validators {
+	for _, validator := range validators {
+		var description *ValidatorDescription
 		validatorType := reflect.TypeOf(validator)
-		config := map[string]interface{}{}
-		if err := Coerce(config, validator); err != nil {
-			return fmt.Errorf("error serializing validator %d of field %s: %v", i+1, f.Name, err)
-		}
-		description := &ValidatorDescription{
-			Type:   validatorType.Name(),
-			Config: config,
+		if serializableValidator, ok := validator.(Serializable); ok {
+			if config, err := serializableValidator.Serialize(); err != nil {
+				return nil, err
+			} else {
+				description = &ValidatorDescription{
+					Type:   validatorType.Name(),
+					Config: config,
+				}
+			}
+		} else {
+			config := map[string]interface{}{}
+			if err := Coerce(config, validator); err != nil {
+				return nil, fmt.Errorf("error serializing validator %v: %v", validator, err)
+			}
+			description = &ValidatorDescription{
+				Type:   validatorType.Name(),
+				Config: config,
+			}
 		}
 		descriptions = append(descriptions, description)
 	}
-	f.ValidatorDescriptions = descriptions
-	return nil
+	return descriptions, nil
+
 }
 
+func (f *Field) Serialize() (map[string]interface{}, error) {
+	if descriptions, err := SerializeValidators(f.Validators); err != nil {
+		return nil, err
+	} else {
+		return map[string]interface{}{
+			"name":        f.Name,
+			"description": f.Description,
+			"validators":  descriptions,
+		}, nil
+	}
+}
+
+type ValidatorDescriptions []*ValidatorDescription
+
 type Field struct {
-	Validators            []Validator             `json:"-"`
 	ValidatorDescriptions []*ValidatorDescription `json:"validators"`
+	Validators            []Validator             `json:"-"`
 	Name                  string                  `json:"name"`
 	Description           string                  `json:"description"`
 }
@@ -117,16 +142,15 @@ func makeErrorMessage(baseMessage string, data map[string]interface{}) string {
 }
 
 type Form struct {
-	Strict                  bool                      `json:"strict"`
-	SanitizeKeys            bool                      `json:"sanitizeKeys"`
-	Validator               FormValidator             `json:"-"`
-	ValidatorDescription    *FormValidatorDescription `json:"validator"`
-	Fields                  []Field                   `json:"fields"`
-	Transforms              []Transform               `json:"-"`
-	Preprocessor            Preprocessor              `json:"-"`
-	PreprocessorDescription *PreprocessorDescription  `json:"preprocessor"`
-	ErrorMsg                string                    `json:"errorMsg"`
-	Description             string                    `json:"description"`
+	Strict                  bool                     `json:"strict"`
+	SanitizeKeys            bool                     `json:"sanitizeKeys"`
+	Validator               FormValidator            `json:"-"`
+	Fields                  []Field                  `json:"fields"`
+	Transforms              []Transform              `json:"-"`
+	Preprocessor            Preprocessor             `json:"-"`
+	PreprocessorDescription *PreprocessorDescription `json:"preprocessor"`
+	ErrorMsg                string                   `json:"errorMsg"`
+	Description             string                   `json:"description"`
 }
 
 // this is just a convenience function to avoid importing the "forms" module
@@ -181,15 +205,6 @@ func (f *Form) ErrorMessage() string {
 		errorMessage = "invalid input data"
 	}
 	return errorMessage
-}
-
-func (f *Form) Serialize() error {
-	for _, field := range f.Fields {
-		if err := field.Serialize(); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (f *Form) ValidateWithContext(inputs map[string]interface{}, context map[string]interface{}) (values map[string]interface{}, validationError error) {

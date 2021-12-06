@@ -23,6 +23,16 @@ var IsListForm = Form{
 	},
 }
 
+func (f IsList) Serialize() (map[string]interface{}, error) {
+	if validators, err := SerializeValidators(f.Validators); err != nil {
+		return nil, err
+	} else {
+		return map[string]interface{}{
+			"validators": validators,
+		}, nil
+	}
+}
+
 func MakeIsListValidator(config map[string]interface{}, context *FormDescriptionContext) (Validator, error) {
 	isList := &IsList{}
 	if params, err := IsListForm.Validate(config); err != nil {

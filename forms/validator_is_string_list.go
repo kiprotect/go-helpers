@@ -22,6 +22,16 @@ var IsStringListForm = Form{
 	},
 }
 
+func (f *IsStringList) Serialize() (map[string]interface{}, error) {
+	if validators, err := SerializeValidators(f.Validators); err != nil {
+		return nil, err
+	} else {
+		return map[string]interface{}{
+			"validators": validators,
+		}, nil
+	}
+}
+
 func MakeIsStringListValidator(config map[string]interface{}, context *FormDescriptionContext) (Validator, error) {
 	isStringList := &IsStringList{}
 	if params, err := IsStringListForm.Validate(config); err != nil {

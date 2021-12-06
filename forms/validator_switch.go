@@ -40,6 +40,20 @@ var SwitchForm = Form{
 	},
 }
 
+func (f *Switch) Serialize() (map[string]interface{}, error) {
+	casesDescriptions := make(map[string][]*ValidatorDescription)
+	for key, validators := range f.Cases {
+		if descriptions, err := SerializeValidators(validators); err != nil {
+			return nil, err
+		} else {
+			casesDescriptions[key] = descriptions
+		}
+	}
+	return map[string]interface{}{
+		"cases": casesDescriptions,
+	}, nil
+}
+
 func MakeSwitchValidator(config map[string]interface{}, context *FormDescriptionContext) (Validator, error) {
 	switchValidator := &Switch{}
 	if params, err := SwitchForm.Validate(config); err != nil {
