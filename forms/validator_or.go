@@ -25,7 +25,7 @@ var OrForm = Form{
 	},
 }
 
-func (f *Or) Serialize() (map[string]interface{}, error) {
+func (f Or) Serialize() (map[string]interface{}, error) {
 	optionDescriptions := make([][]*ValidatorDescription, len(f.Options))
 	for i, option := range f.Options {
 		if descriptions, err := SerializeValidators(option); err != nil {

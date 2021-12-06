@@ -142,14 +142,14 @@ func makeErrorMessage(baseMessage string, data map[string]interface{}) string {
 }
 
 type Form struct {
-	Strict                  bool                     `json:"strict"`
-	SanitizeKeys            bool                     `json:"sanitizeKeys"`
+	Strict                  bool                     `json:"strict,omitempty"`
+	SanitizeKeys            bool                     `json:"sanitizeKeys,omitempty"`
 	Validator               FormValidator            `json:"-"`
 	Fields                  []Field                  `json:"fields"`
 	Transforms              []Transform              `json:"-"`
 	Preprocessor            Preprocessor             `json:"-"`
-	PreprocessorDescription *PreprocessorDescription `json:"preprocessor"`
-	ErrorMsg                string                   `json:"errorMsg"`
+	PreprocessorDescription *PreprocessorDescription `json:"preprocessor,omitempty"`
+	ErrorMsg                string                   `json:"errorMsg,omitempty"`
 	Description             string                   `json:"description"`
 }
 

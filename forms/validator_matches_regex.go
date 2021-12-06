@@ -8,7 +8,7 @@ import (
 var MatchesRegexForm = Form{
 	Fields: []Field{
 		{
-			Name: "regex",
+			Name: "regexp",
 			Validators: []Validator{
 				IsString{},
 				// to do: add regex validation
@@ -24,11 +24,23 @@ func MakeMatchesRegexValidator(config map[string]interface{}, context *FormDescr
 	} else if err := MatchesRegexForm.Coerce(matchesRegex, params); err != nil {
 		return nil, err
 	}
+	if regexp, err := regexp.Compile(matchesRegex.Source); err != nil {
+		return nil, err
+	} else {
+		matchesRegex.Regexp = regexp
+	}
 	return matchesRegex, nil
 }
 
+func (f MatchesRegex) Serialize() (map[string]interface{}, error) {
+	return map[string]interface{}{
+		"regexp": f.Regexp.String(),
+	}, nil
+}
+
 type MatchesRegex struct {
-	Regex *regexp.Regexp `json:"regexp"`
+	Source string         `json:"regexp"`
+	Regexp *regexp.Regexp `json:"-"`
 }
 
 func (f MatchesRegex) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
@@ -36,8 +48,8 @@ func (f MatchesRegex) Validate(input interface{}, values map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("expected a string")
 	}
-	if matched := f.Regex.Match([]byte(value)); !matched {
-		return nil, fmt.Errorf("regex '%s' did not match", f.Regex.String())
+	if matched := f.Regexp.Match([]byte(value)); !matched {
+		return nil, fmt.Errorf("regex '%s' did not match", f.Regexp.String())
 	}
 	return value, nil
 }

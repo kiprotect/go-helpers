@@ -22,7 +22,7 @@ var IsStringListForm = Form{
 	},
 }
 
-func (f *IsStringList) Serialize() (map[string]interface{}, error) {
+func (f IsStringList) Serialize() (map[string]interface{}, error) {
 	if validators, err := SerializeValidators(f.Validators); err != nil {
 		return nil, err
 	} else {
