@@ -177,6 +177,12 @@ func mergeLists(a, b interface{}) interface{} {
 func Merge(a map[string]interface{}, b map[string]interface{}) {
 
 	for key, value := range b {
+		if strings.HasSuffix(key, "!") {
+			// we overwrite the settings value
+			key = key[:len(key)-1]
+			a[key] = value
+			continue
+		}
 		aValue, aOk := a[key]
 		if !aOk {
 			// this key does not yet exist in a, so we just add it
