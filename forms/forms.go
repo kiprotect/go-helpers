@@ -143,6 +143,7 @@ func makeErrorMessage(baseMessage string, data map[string]interface{}) string {
 }
 
 type Form struct {
+	Name                    string                   `json:"name,omitempty"`
 	Strict                  bool                     `json:"strict,omitempty"`
 	SanitizeKeys            bool                     `json:"sanitizeKeys,omitempty"`
 	Validator               FormValidator            `json:"-"`

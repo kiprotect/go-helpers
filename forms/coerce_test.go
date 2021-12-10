@@ -220,3 +220,10 @@ func TestComplexTypeMismatch3(t *testing.T) {
 		t.Fatalf("should throw an error")
 	}
 }
+
+func TestListCoerce(t *testing.T) {
+	ifValue := []interface{}{}
+	if err := Coerce(&ifValue, []string{"foo", "bar"}); err != nil {
+		t.Fatal(err)
+	}
+}
