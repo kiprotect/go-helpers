@@ -101,6 +101,7 @@ type Field struct {
 	ValidatorDescriptions []*ValidatorDescription `json:"validators"`
 	Validators            []Validator             `json:"-"`
 	Name                  string                  `json:"name"`
+	ID                    *string                 `json:"id,omitempty"`
 	Description           string                  `json:"description"`
 }
 
