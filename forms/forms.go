@@ -87,11 +87,15 @@ func (f *Field) Serialize() (map[string]interface{}, error) {
 	if descriptions, err := SerializeValidators(f.Validators); err != nil {
 		return nil, err
 	} else {
-		return map[string]interface{}{
+		m := map[string]interface{}{
 			"name":        f.Name,
 			"description": f.Description,
 			"validators":  descriptions,
-		}, nil
+		}
+		if f.Global {
+			m["global"] = true
+		}
+		return m, nil
 	}
 }
 
@@ -101,7 +105,7 @@ type Field struct {
 	ValidatorDescriptions []*ValidatorDescription `json:"validators"`
 	Validators            []Validator             `json:"-"`
 	Name                  string                  `json:"name"`
-	ID                    *string                 `json:"id,omitempty"`
+	Global                bool                    `json:"global,omitempty"`
 	Description           string                  `json:"description"`
 }
 
