@@ -327,6 +327,19 @@ var EnvForm = forms.Form{
 				forms.IsString{},
 			},
 		},
+		forms.Field{
+			Name: "required",
+			Validators: []forms.Validator{
+				forms.IsOptional{Default: false},
+				forms.IsBoolean{},
+			},
+		},
+		forms.Field{
+			Name: "default",
+			Validators: []forms.Validator{
+				forms.IsOptional{},
+			},
+		},
 	},
 }
 
@@ -407,7 +420,11 @@ func parseVars(settings interface{}, reader io.Reader) (map[string]interface{}, 
 			}
 			variable := envParams["variable"].(string)
 			if envValue, ok := os.LookupEnv(variable); !ok {
-				return nil, fmt.Errorf("environment variable '%s' is undefind", variable)
+				if envParams["required"].(bool) {
+					return nil, fmt.Errorf("environment variable '%s' is undefind", variable)
+				} else if envParams["default"] != nil {
+					value = envParams["default"]
+				}
 			} else {
 				value = envValue
 			}
@@ -418,35 +435,39 @@ func parseVars(settings interface{}, reader io.Reader) (map[string]interface{}, 
 			}
 			value = literalParams["value"]
 		}
-		switch params["type"].(string) {
-		case "string":
-			_, ok := value.(string)
-			if !ok {
-				return nil, fmt.Errorf("variable '%s' is not a string", key)
-			}
-		case "int":
-			if strValue, ok := value.(string); ok {
-				if intValue, err := strconv.ParseInt(strValue, 10, 0); err != nil {
+
+		if value != nil {
+			switch params["type"].(string) {
+			case "string":
+				_, ok := value.(string)
+				if !ok {
+					return nil, fmt.Errorf("variable '%s' is not a string", key)
+				}
+			case "int":
+				if strValue, ok := value.(string); ok {
+					if intValue, err := strconv.ParseInt(strValue, 10, 0); err != nil {
+						return nil, fmt.Errorf("variable '%s' is not an integer", key)
+					} else {
+						value = int(intValue)
+					}
+				} else if _, ok := value.(int); !ok {
 					return nil, fmt.Errorf("variable '%s' is not an integer", key)
-				} else {
-					value = int(intValue)
 				}
-			} else if _, ok := value.(int); !ok {
-				return nil, fmt.Errorf("variable '%s' is not an integer", key)
-			}
-		case "float":
-			if strValue, ok := value.(string); ok {
-				if floatValue, err := strconv.ParseFloat(strValue, 64); err != nil {
+			case "float":
+				if strValue, ok := value.(string); ok {
+					if floatValue, err := strconv.ParseFloat(strValue, 64); err != nil {
+						return nil, fmt.Errorf("variable '%s' is not a float", key)
+					} else {
+						value = float64(floatValue)
+					}
+				} else if _, ok := value.(float64); !ok {
 					return nil, fmt.Errorf("variable '%s' is not a float", key)
-				} else {
-					value = float64(floatValue)
 				}
-			} else if _, ok := value.(float64); !ok {
-				return nil, fmt.Errorf("variable '%s' is not a float", key)
+			case "any":
+				break
 			}
-		case "any":
-			break
 		}
+
 		values[key] = value
 	}
 
