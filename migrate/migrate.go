@@ -20,6 +20,7 @@ import (
 	"github.com/kiprotect/go-helpers/interpolate"
 	"github.com/kiprotect/go-helpers/maps"
 	"github.com/kiprotect/go-helpers/yaml"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"path"
@@ -34,10 +35,10 @@ type ConfigError struct {
 }
 
 type Migration struct {
-	Version     int
-	Description string
-	Content     string
-	FileName    string
+	Version     int    `json:"version"`
+	Description string `json:"description"`
+	Content     string `json:"content"`
+	FileName    string `json:"filename"`
 }
 
 func (self *ConfigError) Error() string {
@@ -47,6 +48,7 @@ func (self *ConfigError) Error() string {
 type MigrationManager struct {
 	Config         map[string]interface{}
 	Path           string
+	FS             fs.FS
 	UpMigrations   map[int]Migration
 	DownMigrations map[int]Migration
 	latestVersion  int
@@ -166,7 +168,7 @@ func (self *MigrationManager) ExecuteMigrations(migrations []Migration) error {
 //Load the migrations from the "migrations" subfolder
 func (self *MigrationManager) LoadMigrations() error {
 	self.latestVersion = 0
-	fileInfos, err := ioutil.ReadDir(self.Path)
+	fileInfos, err := fs.ReadDir(self.FS, self.Path)
 	if err != nil {
 		return err
 	}
@@ -183,7 +185,7 @@ func (self *MigrationManager) LoadMigrations() error {
 		direction := subMatches[2]
 		description := subMatches[3]
 		migrationFileName := filepath.Join(self.Path, fileInfo.Name())
-		content, err := ioutil.ReadFile(migrationFileName)
+		content, err := fs.ReadFile(self.FS, migrationFileName)
 		if err != nil {
 			continue
 		}
@@ -206,7 +208,14 @@ func (self *MigrationManager) LoadConfig(ConfigPath string) error {
 
 	var config map[string]interface{}
 	filePath := path.Join(ConfigPath, "config.yml")
-	fileContent, err := ioutil.ReadFile(filePath)
+
+	file, err := self.FS.Open(filePath)
+
+	if err != nil {
+		return err
+	}
+
+	fileContent, err := ioutil.ReadAll(file)
 
 	if err != nil {
 		return err
@@ -229,19 +238,28 @@ func (self *MigrationManager) LoadConfig(ConfigPath string) error {
 	return nil
 }
 
-func MakeMigrationManager(configPath string, db *sql.DB) (*MigrationManager, error) {
-	migrationManager := new(MigrationManager)
-	migrationManager.Path = configPath
-	migrationManager.DB = db
+func MakeMigrationManager(configPath string, fS fs.FS, db *sql.DB) (*MigrationManager, error) {
+
+	migrationManager := &MigrationManager{
+		Path: configPath,
+		DB:   db,
+		FS:   fS,
+	}
+
 	err := migrationManager.LoadConfig(configPath)
+
 	if err != nil {
 		return nil, fmt.Errorf("migrationManager.LoadConfig: %v", err)
 	}
+
 	migrationManager.UpMigrations = make(map[int]Migration)
 	migrationManager.DownMigrations = make(map[int]Migration)
+
 	err = migrationManager.LoadMigrations()
+
 	if err != nil {
 		return nil, err
 	}
+
 	return migrationManager, nil
 }

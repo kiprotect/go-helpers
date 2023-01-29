@@ -36,6 +36,7 @@ import (
 )
 
 type Settings struct {
+	Fs     fs.FS
 	Values map[string]interface{}
 }
 
@@ -45,6 +46,10 @@ type SettingsError struct {
 
 func (self *SettingsError) Error() string {
 	return self.msg
+}
+
+func (self *Settings) FS() fs.FS {
+	return self.Fs
 }
 
 func (self *Settings) Get(key string) (interface{}, error) {
@@ -237,8 +242,8 @@ func (self *Settings) getSettingsFiles(settingsPath string, fS fs.FS) []string {
 	return paths
 }
 
-func (self *Settings) Load(settingsPath string, fS fs.FS) error {
-	file, err := fS.Open(settingsPath)
+func (self *Settings) Load(settingsPath string) error {
+	file, err := self.Fs.Open(settingsPath)
 	if err != nil {
 		return err
 	}
@@ -248,7 +253,7 @@ func (self *Settings) Load(settingsPath string, fS fs.FS) error {
 	}
 	var settingsFiles []string
 	if fi.Mode().IsDir() {
-		settingsFiles = self.getSettingsFiles(settingsPath, fS)
+		settingsFiles = self.getSettingsFiles(settingsPath, self.Fs)
 	} else {
 		settingsFiles = []string{settingsPath}
 	}
@@ -260,9 +265,9 @@ func (self *Settings) Load(settingsPath string, fS fs.FS) error {
 		var settings interface{}
 		var err error
 		if strings.HasSuffix(settingsFile, ".yml") {
-			settings, err = LoadYaml(settingsFile, fS)
+			settings, err = LoadYaml(settingsFile, self.Fs)
 		} else if strings.HasSuffix(settingsFile, ".json") {
-			settings, err = LoadJSON(settingsFile, fS)
+			settings, err = LoadJSON(settingsFile, self.Fs)
 		} else {
 			return fmt.Errorf("invalid file: %s", settingsFile)
 		}
@@ -832,9 +837,13 @@ func loadYaml(filePath string, reader Reader) (interface{}, error) {
 }
 
 func MakeSettings(settingsPaths []string, fS fs.FS) (*Settings, error) {
-	settings := new(Settings)
+
+	settings := &Settings{
+		Fs: fS,
+	}
+
 	for _, path := range settingsPaths {
-		err := settings.Load(path, fS)
+		err := settings.Load(path)
 		if err != nil {
 			return nil, fmt.Errorf("Error loading settings from path '%s': %s", path, err.Error())
 		}
