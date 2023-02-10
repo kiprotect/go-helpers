@@ -291,7 +291,7 @@ var VarsForm = forms.Form{
 			Name: "type",
 			Validators: []forms.Validator{
 				forms.IsRequired{},
-				forms.IsIn{Choices: []interface{}{"string", "int", "float", "any"}},
+				forms.IsIn{Choices: []interface{}{"string", "int", "float", "json", "yaml", "any"}},
 			},
 		},
 		forms.Field{
@@ -443,6 +443,34 @@ func parseVars(settings interface{}, reader io.Reader) (map[string]interface{}, 
 
 		if value != nil {
 			switch params["type"].(string) {
+			case "yaml":
+				strValue, ok := value.(string)
+				if !ok {
+					return nil, fmt.Errorf("variable '%s' is not a string", key)
+				}
+
+				var settings interface{}
+
+				if err := yaml.Unmarshal([]byte(strValue), &settings); err != nil {
+					return nil, fmt.Errorf("error parsing YAML for variable '%s': %v", key, err)
+				}
+
+				// we replace the value with the parsed YAML
+				value = settings
+			case "json":
+				strValue, ok := value.(string)
+				if !ok {
+					return nil, fmt.Errorf("variable '%s' is not a string", key)
+				}
+
+				var settings interface{}
+
+				if err := json.Unmarshal([]byte(strValue), &settings); err != nil {
+					return nil, fmt.Errorf("error parsing JSON for variable '%s': %v", key, err)
+				}
+
+				// we replace the value with the parsed YAML
+				value = settings
 			case "string":
 				_, ok := value.(string)
 				if !ok {
