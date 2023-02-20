@@ -19,7 +19,5 @@ unit_tests:
   before_script:
     # Install project dependencies
     - make dep
- 
   script:
     - make test
-
