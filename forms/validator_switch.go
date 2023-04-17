@@ -2,6 +2,7 @@ package forms
 
 import (
 	"fmt"
+	"sort"
 )
 
 var CasesForm = Form{
@@ -61,8 +62,20 @@ func MakeSwitchValidator(config map[string]interface{}, context *FormDescription
 	} else if err := SwitchForm.Coerce(switchValidator, params); err != nil {
 		return nil, err
 	} else {
+
+		values := []string{}
+
+		for value, _ := range switchValidator.CasesDescriptions {
+			values = append(values, value)
+		}
+
+		// we sort the case values to make sure they will be evaluated in a deterministic order
+		sort.Strings(values)
+
 		cases := map[string][]Validator{}
-		for key, caseDescription := range switchValidator.CasesDescriptions {
+
+		for _, key := range values {
+			caseDescription := switchValidator.CasesDescriptions[key]
 			validators := []Validator{}
 			for _, validatorDescription := range caseDescription {
 				if validator, err := ValidatorFromDescription(validatorDescription, context); err != nil {
