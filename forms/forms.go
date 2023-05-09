@@ -89,9 +89,13 @@ func (f *Field) Serialize() (map[string]interface{}, error) {
 	} else {
 		m := map[string]interface{}{
 			"name":        f.Name,
-			"description": f.Description,
 			"validators":  descriptions,
 		}
+
+		if f.Description != "" {
+			m["description"] = f.Description
+		}
+
 		if f.Global {
 			m["global"] = true
 		}
