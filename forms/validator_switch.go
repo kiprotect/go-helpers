@@ -51,6 +51,7 @@ func (f Switch) Serialize() (map[string]interface{}, error) {
 		}
 	}
 	return map[string]interface{}{
+		"key":   f.Key,
 		"cases": casesDescriptions,
 	}, nil
 }

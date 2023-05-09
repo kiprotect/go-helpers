@@ -34,8 +34,8 @@ func MakeIsStringValidator(config map[string]interface{}, context *FormDescripti
 }
 
 type IsString struct {
-	MinLength int `json:"minLength" coerce:"convert"`
-	MaxLength int `json:"maxLength" coerce:"convert"`
+	MinLength int `json:"minLength,omitempty" coerce:"convert"`
+	MaxLength int `json:"maxLength,omitempty" coerce:"convert"`
 }
 
 func (f IsString) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {

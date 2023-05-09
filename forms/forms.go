@@ -106,7 +106,7 @@ type Field struct {
 	Validators            []Validator             `json:"-"`
 	Name                  string                  `json:"name"`
 	Global                bool                    `json:"global,omitempty"`
-	Description           string                  `json:"description"`
+	Description           string                  `json:"description,omitempty"`
 }
 
 type Transform struct {
@@ -156,7 +156,7 @@ type Form struct {
 	Preprocessor            Preprocessor             `json:"-"`
 	PreprocessorDescription *PreprocessorDescription `json:"preprocessor,omitempty"`
 	ErrorMsg                string                   `json:"errorMsg,omitempty"`
-	Description             string                   `json:"description"`
+	Description             string                   `json:"description,omitempty"`
 }
 
 // this is just a convenience function to avoid importing the "forms" module

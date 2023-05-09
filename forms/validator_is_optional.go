@@ -22,7 +22,7 @@ func MakeIsOptionalValidator(config map[string]interface{}, context *FormDescrip
 }
 
 type IsOptional struct {
-	Default          interface{}        `json:"default"`
+	Default          interface{}        `json:"default,omitempty"`
 	DefaultGenerator func() interface{} `json:"-"`
 }
 
