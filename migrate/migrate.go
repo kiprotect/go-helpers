@@ -99,7 +99,7 @@ func (self *MigrationManager) CurrentVersion() (int, error) {
 	return version, nil
 }
 
-//Migrates the database to the current head version
+// Migrates the database to the current head version
 func (self *MigrationManager) Migrate(version int) error {
 	currentVersion, _ := self.CurrentVersion()
 	relevantMigrations := make([]Migration, 0, 10)
@@ -153,7 +153,7 @@ func (self *MigrationManager) Migrate(version int) error {
 	return err
 }
 
-//Executes a list of migrations
+// Executes a list of migrations
 func (self *MigrationManager) ExecuteMigrations(migrations []Migration) error {
 	for _, migration := range migrations {
 		log.Printf("Executing migration %v\n", migration.FileName)
@@ -165,7 +165,7 @@ func (self *MigrationManager) ExecuteMigrations(migrations []Migration) error {
 	return nil
 }
 
-//Load the migrations from the "migrations" subfolder
+// Load the migrations from the "migrations" subfolder
 func (self *MigrationManager) LoadMigrations() error {
 	self.latestVersion = 0
 	fileInfos, err := fs.ReadDir(self.FS, self.Path)

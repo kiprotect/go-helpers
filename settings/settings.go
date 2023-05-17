@@ -177,8 +177,8 @@ func mergeLists(a, b interface{}) interface{} {
 	return c
 }
 
-//Merges two maps in place, such that entries in a will be recursively updated/created using
-//entries from b.
+// Merges two maps in place, such that entries in a will be recursively updated/created using
+// entries from b.
 func Merge(a map[string]interface{}, b map[string]interface{}) {
 
 	for key, value := range b {
