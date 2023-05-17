@@ -88,8 +88,8 @@ func (f *Field) Serialize() (map[string]interface{}, error) {
 		return nil, err
 	} else {
 		m := map[string]interface{}{
-			"name":        f.Name,
-			"validators":  descriptions,
+			"name":       f.Name,
+			"validators": descriptions,
 		}
 
 		if f.Description != "" {
@@ -111,6 +111,7 @@ type Field struct {
 	Name                  string                  `json:"name"`
 	Global                bool                    `json:"global,omitempty"`
 	Description           string                  `json:"description,omitempty"`
+	Examples              []any                   `json:"examples,omitempty"`
 }
 
 type Transform struct {
@@ -161,6 +162,7 @@ type Form struct {
 	PreprocessorDescription *PreprocessorDescription `json:"preprocessor,omitempty"`
 	ErrorMsg                string                   `json:"errorMsg,omitempty"`
 	Description             string                   `json:"description,omitempty"`
+	Examples                []map[string]any         `json:"examples,omitempty"`
 }
 
 // this is just a convenience function to avoid importing the "forms" module
