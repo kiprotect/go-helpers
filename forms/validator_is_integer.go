@@ -56,11 +56,11 @@ func MakeIsIntegerValidator(config map[string]interface{}, context *FormDescript
 }
 
 type IsInteger struct {
-	Convert bool  `json:"convert"`
-	Min     int64 `json:"min" coerce:"convert"`
-	Max     int64 `json:"max" coerce:"convert"`
-	HasMin  bool  `json:"hasMin"`
-	HasMax  bool  `json:"hasMax"`
+	Convert bool  `json:"convert,omitempty"`
+	Min     int64 `json:"min,omitempty" coerce:"convert"`
+	Max     int64 `json:"max,omitempty" coerce:"convert"`
+	HasMin  bool  `json:"hasMin,omitempty"`
+	HasMax  bool  `json:"hasMax,omitempty"`
 }
 
 func (f IsInteger) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {

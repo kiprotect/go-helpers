@@ -19,14 +19,14 @@ var IsBytesForm = Form{
 			Name: "minLength",
 			Validators: []Validator{
 				IsOptional{},
-				IsInteger{HasMin: true, Min: 0},
+				IsInteger{Min: 0},
 			},
 		},
 		{
 			Name: "maxLength",
 			Validators: []Validator{
 				IsOptional{},
-				IsInteger{HasMin: true, Min: 0},
+				IsInteger{Min: 0},
 			},
 		},
 	},
