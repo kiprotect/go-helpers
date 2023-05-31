@@ -62,7 +62,7 @@ func (self *MigrationManager) LatestVersion() int {
 func (self *MigrationManager) CurrentVersion() (int, error) {
 
 	//we test the SQL connection
-	_, err := self.DB.Query(`
+	_, err := self.DB.Exec(`
   	      SELECT 'Hello, World';
 	    `)
 
@@ -82,11 +82,14 @@ func (self *MigrationManager) CurrentVersion() (int, error) {
 		//the version table does not exist yet...
 		return 0, nil
 	}
+
 	rows, err := self.DB.Query(interpolatedString)
 
 	if err != nil {
 		return 0, nil
 	}
+
+	defer rows.Close()
 
 	if !rows.Next() {
 		//nothing stored in the version table so far
@@ -156,11 +159,15 @@ func (self *MigrationManager) Migrate(version int) error {
 // Executes a list of migrations
 func (self *MigrationManager) ExecuteMigrations(migrations []Migration) error {
 	for _, migration := range migrations {
+
 		log.Printf("Executing migration %v\n", migration.FileName)
+
 		_, err := self.DB.Exec(migration.Content)
+
 		if err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
