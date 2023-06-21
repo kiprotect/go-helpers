@@ -34,12 +34,61 @@ var ValidatorDescriptionForm = Form{
 	},
 }
 
+var FieldExampleForm = Form{
+	Fields: []Field{
+		{
+			Name: "value",
+			Validators: []Validator{
+				CanBeAnything{},
+			},
+		},
+		{
+			Name: "invalid",
+			Validators: []Validator{
+				IsOptional{Default: false},
+				IsBoolean{},
+			},
+		},
+	},
+}
+
+var FormExampleForm = Form{
+	Fields: []Field{
+		{
+			Name: "value",
+			Validators: []Validator{
+				IsStringMap{},
+			},
+		},
+		{
+			Name: "invalid",
+			Validators: []Validator{
+				IsOptional{Default: false},
+				IsBoolean{},
+			},
+		},
+	},
+}
+
 var FieldForm = Form{
 	Fields: []Field{
 		{
 			Name: "name",
 			Validators: []Validator{
 				IsString{},
+			},
+		},
+		{
+			Name: "examples",
+			Validators: []Validator{
+				IsOptional{},
+				IsList{
+					Validators: []Validator{
+						IsStringMap{
+							Form: &FieldExampleForm,
+						},
+					},
+				},
 			},
 		},
 		{
@@ -82,6 +131,19 @@ var FormForm = Form{
 			Validators: []Validator{
 				IsOptional{},
 				IsString{},
+			},
+		},
+		{
+			Name: "examples",
+			Validators: []Validator{
+				IsOptional{},
+				IsList{
+					Validators: []Validator{
+						IsStringMap{
+							Form: &FormExampleForm,
+						},
+					},
+				},
 			},
 		},
 		{

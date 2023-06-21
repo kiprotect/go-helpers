@@ -111,7 +111,12 @@ type Field struct {
 	Name                  string                  `json:"name"`
 	Global                bool                    `json:"global,omitempty"`
 	Description           string                  `json:"description,omitempty"`
-	Examples              []any                   `json:"examples,omitempty"`
+	Examples              []FieldExample          `json:"examples,omitempty"`
+}
+
+type FieldExample struct {
+	Value   any  `json:"value"`
+	Invalid bool `json:"invalid"`
 }
 
 type Transform struct {
@@ -162,7 +167,12 @@ type Form struct {
 	PreprocessorDescription *PreprocessorDescription `json:"preprocessor,omitempty"`
 	ErrorMsg                string                   `json:"errorMsg,omitempty"`
 	Description             string                   `json:"description,omitempty"`
-	Examples                []map[string]any         `json:"examples,omitempty"`
+	Examples                []FormExample            `json:"examples,omitempty"`
+}
+
+type FormExample struct {
+	Value   map[string]any `json:"value"`
+	Invalid bool           `json:"invalid"`
 }
 
 // this is just a convenience function to avoid importing the "forms" module
