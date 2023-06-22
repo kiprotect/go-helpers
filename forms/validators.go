@@ -2,6 +2,7 @@ package forms
 
 var Validators = map[string]ValidatorMaker{
 	"IsString":      MakeIsStringValidator,
+	"IsStringList":  MakeIsStringListValidator,
 	"CanBeAnything": MakeCanBeAnythingValidator,
 	"IsBytes":       MakeIsBytesValidator,
 	"IsBoolean":     MakeIsBooleanValidator,

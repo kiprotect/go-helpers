@@ -33,7 +33,7 @@ type ContextValidator interface {
 type TransformFunction func(interface{}, map[string]interface{}) (interface{}, error)
 
 // https://stackoverflow.com/questions/35790935/using-reflection-in-go-to-get-the-name-of-a-struct
-func getType(myvar interface{}) string {
+func GetType(myvar interface{}) string {
 	if t := reflect.TypeOf(myvar); t.Kind() == reflect.Ptr {
 		return t.Elem().Name()
 	} else {
@@ -57,7 +57,7 @@ func SerializeValidators(validators []Validator) ([]*ValidatorDescription, error
 	descriptions := []*ValidatorDescription{}
 	for _, validator := range validators {
 		var description *ValidatorDescription
-		validatorType := getType(validator)
+		validatorType := GetType(validator)
 		if serializableValidator, ok := validator.(Serializable); ok {
 			if config, err := serializableValidator.Serialize(); err != nil {
 				return nil, err
