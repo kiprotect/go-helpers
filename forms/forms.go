@@ -270,6 +270,7 @@ func (f *Form) validate(inputs map[string]interface{}, update bool, context map[
 	var value interface{}
 	for _, field := range f.Fields {
 		keys := []string{field.Name}
+
 		if field.Name == "*" {
 			// this is a wildcard field that should be applied to all
 			// input values (e.g. useful for global validators)
@@ -278,8 +279,16 @@ func (f *Form) validate(inputs map[string]interface{}, update bool, context map[
 				keys = append(keys, k)
 			}
 		}
+
 		for _, key := range keys {
+
 			value = sanitizedInput[key]
+
+			// if no validators are given, we simply copy the raw value
+			if len(field.Validators) == 0 {
+				values[key] = value
+			}
+
 			for _, validator := range field.Validators {
 
 				// we skip empty fields if we're in "update mode"
