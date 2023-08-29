@@ -90,6 +90,15 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 	targetValue := valueOf(target)
 	sourceValue := valueOf(source)
 
+	if sourceType == nil {
+		// this is a nil value
+		if targetValue.CanSet() {
+			// if the target value can be zeroed, we do that
+			targetValue.SetZero()
+		}
+		return nil
+	}
+
 	tryAssign := func(st, tt reflect.Type, sv, tv reflect.Value) bool {
 
 		if !tv.CanSet() {
@@ -391,6 +400,11 @@ func coerce(target interface{}, source interface{}, path []interface{}, tags []T
 }
 
 func unpointValue(value reflect.Value) reflect.Value {
+
+	if !value.IsValid() {
+		return value
+	}
+
 	if value.Kind() == reflect.Ptr {
 		return reflect.Indirect(value)
 	}
@@ -398,6 +412,11 @@ func unpointValue(value reflect.Value) reflect.Value {
 }
 
 func unpointType(typ reflect.Type) reflect.Type {
+
+	if typ == nil {
+		return typ
+	}
+
 	if typ.Kind() == reflect.Ptr {
 		return typ.Elem()
 	}
