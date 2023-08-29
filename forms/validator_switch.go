@@ -100,24 +100,33 @@ type Switch struct {
 
 func (f Switch) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
 	strValue, ok := values[f.Key].(string)
+
 	if !ok {
 		return nil, fmt.Errorf("switch key is not a string")
 	}
+
 	caseValue, ok := f.Cases[strValue]
+
 	if !ok {
+
 		// we check if a default value is defined
 		caseValue, ok = f.Cases["default!"]
+
 		if !ok {
 			// no default defined either
-			return input, nil
+			return nil, fmt.Errorf("unknown switch case value: '%s'", strValue)
 		}
+
 	}
+
 	var err error
+
 	for _, validator := range caseValue {
 		input, err = validator.Validate(input, values)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return input, nil
 }
