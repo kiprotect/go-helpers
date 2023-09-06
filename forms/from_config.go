@@ -203,14 +203,14 @@ type PreprocessorDescription struct {
 }
 
 type FormDescriptionContext struct {
-	Validators map[string]ValidatorMaker
+	Validators map[string]ValidatorDefinition
 }
 
 func ValidatorFromDescription(config *ValidatorDescription, context *FormDescriptionContext) (Validator, error) {
-	if maker, ok := context.Validators[config.Type]; !ok {
+	if definition, ok := context.Validators[config.Type]; !ok {
 		return nil, fmt.Errorf("unknown validator type: '%s'", config.Type)
 	} else {
-		return maker(config.Config, context)
+		return definition.Maker(config.Config, context)
 	}
 }
 
