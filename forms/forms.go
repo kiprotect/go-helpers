@@ -53,30 +53,44 @@ type Serializable interface {
 	Serialize() (map[string]interface{}, error)
 }
 
+func SerializeValidator(validator Validator) (*ValidatorDescription, error) {
+
+	validatorType := GetType(validator)
+
+	if serializableValidator, ok := validator.(Serializable); ok {
+		if config, err := serializableValidator.Serialize(); err != nil {
+			return nil, err
+		} else {
+			return &ValidatorDescription{
+				Type:   validatorType,
+				Config: config,
+			}, nil
+		}
+	} else {
+		config := map[string]interface{}{}
+
+		if err := Coerce(config, validator); err != nil {
+			return nil, fmt.Errorf("error serializing validator %v: %v", validator, err)
+		}
+
+		return &ValidatorDescription{
+			Type:   validatorType,
+			Config: config,
+		}, nil
+	}
+
+}
+
 func SerializeValidators(validators []Validator) ([]*ValidatorDescription, error) {
 	descriptions := []*ValidatorDescription{}
 	for _, validator := range validators {
-		var description *ValidatorDescription
-		validatorType := GetType(validator)
-		if serializableValidator, ok := validator.(Serializable); ok {
-			if config, err := serializableValidator.Serialize(); err != nil {
-				return nil, err
-			} else {
-				description = &ValidatorDescription{
-					Type:   validatorType,
-					Config: config,
-				}
-			}
-		} else {
-			config := map[string]interface{}{}
-			if err := Coerce(config, validator); err != nil {
-				return nil, fmt.Errorf("error serializing validator %v: %v", validator, err)
-			}
-			description = &ValidatorDescription{
-				Type:   validatorType,
-				Config: config,
-			}
+
+		description, err := SerializeValidator(validator)
+
+		if err != nil {
+			return nil, err
 		}
+
 		descriptions = append(descriptions, description)
 	}
 	return descriptions, nil
