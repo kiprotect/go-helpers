@@ -50,9 +50,18 @@ func (f Switch) Serialize() (map[string]interface{}, error) {
 			casesDescriptions[key] = descriptions
 		}
 	}
+
+	defaultDescriptions, err := SerializeValidators(f.Default)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return map[string]interface{}{
-		"key":   f.Key,
-		"cases": casesDescriptions,
+		"key":        f.Key,
+		"exhaustive": f.Exhaustive,
+		"default":    defaultDescriptions,
+		"cases":      casesDescriptions,
 	}, nil
 }
 
@@ -93,9 +102,12 @@ func MakeSwitchValidator(config map[string]interface{}, context *FormDescription
 }
 
 type Switch struct {
-	Key               string                             `json:"key"`
-	Cases             map[string][]Validator             `json:"-"`
-	CasesDescriptions map[string][]*ValidatorDescription `json:"cases"`
+	Key                 string                             `json:"key"`
+	Exhaustive          bool                               `json:"exhaustive"`
+	Default             []Validator                        `json:"-"`
+	Cases               map[string][]Validator             `json:"-"`
+	CasesDescriptions   map[string][]*ValidatorDescription `json:"cases"`
+	DefaultDescriptions []*ValidatorDescription            `json:"default"`
 }
 
 func (f Switch) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
@@ -109,10 +121,18 @@ func (f Switch) Validate(input interface{}, values map[string]interface{}) (inte
 
 	if !ok {
 
-		// we check if a default value is defined
-		caseValue, ok = f.Cases["default!"]
+		if f.Default != nil {
+			caseValue = f.Default
+			ok = true
+		}
 
 		if !ok {
+
+			// the switch case is not covered, we return nil
+			if input == nil && !f.Exhaustive {
+				return nil, nil
+			}
+
 			// no default defined either
 			return nil, fmt.Errorf("unknown switch case value: '%s'", strValue)
 		}
