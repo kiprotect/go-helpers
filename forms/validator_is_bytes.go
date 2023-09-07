@@ -63,7 +63,7 @@ func (f IsBytes) Validate(input interface{}, values map[string]interface{}) (int
 	// we try to convert the input to a string
 	str, ok := input.(string)
 	if !ok {
-		return nil, fmt.Errorf("expected a string")
+		return nil, fmt.Errorf("IsBytes: expected a string")
 	}
 
 	var b []byte

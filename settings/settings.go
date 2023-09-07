@@ -639,7 +639,7 @@ func loadIncludes(data interface{}, filePath string, reader Reader) (interface{}
 						if strValue, ok := value.(string); ok {
 							includes = append(includes, strValue)
 						} else {
-							return nil, fmt.Errorf("expected a string")
+							return nil, fmt.Errorf("Includes: expected a string")
 						}
 					}
 				} else {

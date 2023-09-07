@@ -6,6 +6,7 @@ var IsOptionalForm = Form{
 			Name: "default",
 			Validators: []Validator{
 				IsOptional{},
+				CanBeAnything{},
 			},
 		},
 	},

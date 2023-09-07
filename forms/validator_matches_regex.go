@@ -46,7 +46,7 @@ type MatchesRegex struct {
 func (f MatchesRegex) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
 	value, ok := input.(string)
 	if !ok {
-		return nil, fmt.Errorf("expected a string")
+		return nil, fmt.Errorf("MatchesRegex: expected a string")
 	}
 	if matched := f.Regexp.Match([]byte(value)); !matched {
 		return nil, fmt.Errorf("regex '%s' did not match", f.Regexp.String())

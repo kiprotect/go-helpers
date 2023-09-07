@@ -41,7 +41,7 @@ type IsString struct {
 func (f IsString) Validate(input interface{}, values map[string]interface{}) (interface{}, error) {
 	str, ok := input.(string)
 	if !ok {
-		return nil, fmt.Errorf("expected a string")
+		return nil, fmt.Errorf("IsString: expected a string")
 	}
 	if f.MinLength > 0 && len(str) < f.MinLength {
 		return nil, fmt.Errorf("must be at least %d characters long", f.MinLength)
