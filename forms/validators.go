@@ -6,6 +6,7 @@ type ValidatorDefinition struct {
 }
 
 var Validators = map[string]ValidatorDefinition{
+	"IsNil":         ValidatorDefinition{MakeIsNilValidator, IsNilForm},
 	"IsString":      ValidatorDefinition{MakeIsStringValidator, IsStringForm},
 	"IsStringList":  ValidatorDefinition{MakeIsStringListValidator, IsStringListForm},
 	"CanBeAnything": ValidatorDefinition{MakeCanBeAnythingValidator, CanBeAnythingForm},
