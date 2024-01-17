@@ -9,6 +9,7 @@ var OrForm = Form{
 		{
 			Name: "options",
 			Validators: []Validator{
+				IsOptional{Default: []map[string]any{}},
 				IsList{
 					Validators: []Validator{
 						IsList{

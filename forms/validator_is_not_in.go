@@ -9,6 +9,7 @@ var IsNotInForm = Form{
 		{
 			Name: "choices",
 			Validators: []Validator{
+				IsOptional{Default: []any{}},
 				IsList{},
 			},
 		},

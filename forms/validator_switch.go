@@ -10,8 +10,10 @@ var CasesForm = Form{
 		{
 			Name: "*",
 			Validators: []Validator{
+				IsOptional{Default: []map[string]any{}},
 				IsList{
 					Validators: []Validator{
+						IsOptional{Default: map[string]any{}},
 						IsStringMap{
 							Form: &ValidatorDescriptionForm,
 						},
@@ -27,12 +29,14 @@ var SwitchForm = Form{
 		{
 			Name: "key",
 			Validators: []Validator{
+				IsOptional{Default: "_"},
 				IsString{},
 			},
 		},
 		{
 			Name: "cases",
 			Validators: []Validator{
+				IsOptional{Default: map[string]any{}},
 				IsStringMap{
 					Form: &CasesForm,
 				},

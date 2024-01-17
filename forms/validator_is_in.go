@@ -10,6 +10,7 @@ var IsInForm = Form{
 		{
 			Name: "choices",
 			Validators: []Validator{
+				IsOptional{Default: []any{}},
 				IsList{},
 			},
 		},

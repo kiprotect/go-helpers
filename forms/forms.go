@@ -148,6 +148,10 @@ type FormError struct {
 	errors.BaseChainableError
 }
 
+func (f *FormError) Errors() map[string]any {
+	return f.BaseChainableError.Data().(map[string]any)
+}
+
 func MakeFormError(message, code string, data map[string]interface{}, base error) errors.ChainableError {
 	return &FormError{
 		BaseChainableError: *errors.MakeError(errors.ExternalError, makeErrorMessage(message, data), code, data, base),

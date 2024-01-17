@@ -10,11 +10,26 @@ var MatchesRegexForm = Form{
 		{
 			Name: "regexp",
 			Validators: []Validator{
+				IsOptional{Default: ".*"},
 				IsString{},
-				// to do: add regex validation
+				IsValidRegexp{},
 			},
 		},
 	},
+}
+
+type IsValidRegexp struct {
+}
+
+func (i IsValidRegexp) Validate(value any, values map[string]any) (any, error) {
+	strValue, ok := value.(string)
+	if !ok {
+		return nil, fmt.Errorf("expected a string")
+	}
+	if _, err := regexp.Compile(strValue); err != nil {
+		return nil, fmt.Errorf("cannot compile regular expression: %v", err)
+	}
+	return value, nil
 }
 
 func MakeMatchesRegexValidator(config map[string]interface{}, context *FormDescriptionContext) (Validator, error) {
