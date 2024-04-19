@@ -6,7 +6,7 @@ GOFLAGS ?= $(GOFLAGS:)
 all: dep install test
 
 copyright:
-	python .scripts/make_copyright_headers.py
+	python3 .scripts/make_copyright_headers.py
 
 build:
 	@go build $(GOFLAGS) ./...

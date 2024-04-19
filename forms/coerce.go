@@ -1,5 +1,5 @@
 // KIProtect Go-Helpers - Golang Utility Functions
-// Copyright (C) 2019-2021  KIProtect GmbH (HRB 208395B) - Germany
+// Copyright (C) 2019-2024  KIProtect GmbH (HRB 208395B) - Germany
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the 3-Clause BSD License.
@@ -9,7 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // license for more details.
 //
-// You should have received a opy of the 3-Clause BSD License
+// You should have received a copy of the 3-Clause BSD License
 // along with this program.  If not, see <https://opensource.org/licenses/BSD-3-Clause>.
 
 package forms
