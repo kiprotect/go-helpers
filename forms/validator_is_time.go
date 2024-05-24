@@ -36,7 +36,7 @@ var IsTimeForm = Form{
 			},
 		},
 		{
-			Name: "form",
+			Name: "format",
 			Validators: []Validator{
 				IsOptional{
 					Default: "rfc3339",
